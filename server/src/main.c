@@ -18,9 +18,9 @@
 #include <sys/socket.h>
 #include <dc_util/io.h>
 
-#define SERVER_PORT 4981
+#define SERVER_PORT 5000
 #define BACKLOG 10
-#define MAX_CLIENTS 100
+#define MAX_CLIENTS 10
 #define POLL_TIMEOUT (-1)
 #define BUFFER_SIZE 1024
 
@@ -40,8 +40,7 @@ enum Type {
     READ = 0x2,
     UPDATE = 0x3,
     DESTROY = 0x4,
-    PING = 0x8,
-    PING_SUBTYPE = 0xf
+    PING = 0x8
 };
 
 enum Object {
@@ -51,9 +50,9 @@ enum Object {
     AUTH = 0x04
 };
 
-struct binary_header_field
-{
+struct binary_header_field {
     unsigned int version : 4; // 4 bit version number
+    unsigned int type : 4; // 4 bit type number
     uint8_t object; // 8 bit object type
     uint16_t body_size; // 16 bit body size
 };
@@ -273,14 +272,24 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
             printf("Read from client\n");
             dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
 
-            for(int j = 0; j < bytes_read; j++)
-            {
-                buffer[j] = (char)dc_toupper(env, buffer[j]);
-            }
+            struct binary_header_field header;
+            header.version = 0x1;
+            header.type = CREATE;
+            header.object = MESSAGE;
+            header.body_size = 0;
+
+            uint32_t packet = ((header.version & 0xF) << 28) | ((header.type & 0xF) << 24) |
+                              ((header.object & 0xFF) << 16) | (header.body_size & 0xFFFF);
+
+            packet = htonl(packet);
+
+            printf("Packet version: %d\n", header.version);
+            printf("Packet type:  0x%02X\n", header.type);
+            printf("Packet object type: 0x%02X\n", header.object);
+            printf("Packet body size: %d\n", header.body_size);
 
             printf("Writing to client\n");
-            dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
-            dc_write(env, err, client_sockets[i], buffer, bytes_read);
+            dc_write(env, err, client_sockets[i], &packet, sizeof(packet));
         }
     }
 }
