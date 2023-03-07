@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-project(web-server
+project(chat-server
         VERSION 0.0.1
         DESCRIPTION ""
         LANGUAGES C)
@@ -8,9 +8,7 @@ project(web-server
 set(CMAKE_C_STANDARD 17)
 
 option(DC_BUILD_SANITIZE "Build with sanitize" ON)
-#if(NOT DC_BUILD_SANITIZE)
-#    set(SANITIZE TRUE)
-#endif()
+
 set(SANITIZE TRUE)
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
@@ -390,4 +388,4 @@ include_directories(${ENV_INCLUDE_DIR})
 find_path(ENV_INCLUDE_DIR dc_env/env.h)
 include_directories(${ENV_INCLUDE_DIR})
 
-add_executable_target(process-server PROCESS_SERVER_SOURCE_LIST PROCESS_SERVER_SOURCE_MAIN PROCESS_SERVER_HEADER_LIST PROCESS_SERVER_REQUIRED_LIBRARIES_LIST "" "")
+add_executable_target(chat-server PROCESS_SERVER_SOURCE_LIST PROCESS_SERVER_SOURCE_MAIN PROCESS_SERVER_HEADER_LIST PROCESS_SERVER_REQUIRED_LIBRARIES_LIST "" "")
