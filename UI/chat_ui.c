@@ -29,7 +29,7 @@ typedef struct {
 
 void values_init(Message *messages);
 void init_ncurses();
-void print_sections(int message_bar_row, int input_row);
+void print_sections(int message_bar_row, int input_row, int input_col, char input_buffer[MAX_MESSAGE_LENGTH]);
 void show_login_menu();
 void show_signup_menu();
 int validate_credentials(User user);
@@ -54,8 +54,6 @@ void values_init(Message *messages) {
     int scroll_offset = 0;
     // maximum row and column dimensions of terminal window
     int max_row, max_col;
-    // row where message bar starts
-    int message_bar_row;
     // row and column where user input starts
     int input_row, input_col;
     // buffer to store user input
@@ -68,10 +66,9 @@ void values_init(Message *messages) {
     // get maximum row and column dimensions of terminal window
     getmaxyx(stdscr, max_row, max_col);
 
-    message_bar_row = max_row - 3;
     input_row = max_row - 2;
     input_col = 2;
-    print_sections(message_bar_row, input_row);
+    //print_sections(message_bar_row, input_row);
 
 //    run(messages, num_messages, scroll_offset, max_row, max_col, input_row, input_col, input_buffer,
 //        input_length);
@@ -96,13 +93,16 @@ void init_ncurses() {
  *
  * @param max_row max row to be set
  * */
-void print_sections(int message_bar_row, int input_row) {
-    mvprintw(message_bar_row, 0, "Chat history: ");
-    mvprintw(input_row, 0, "Type a message and press 'ENTER' to send: ");
+void print_sections(int message_bar_row, int input_row, int input_col, char input_buffer[MAX_MESSAGE_LENGTH]) {
+    mvprintw(message_bar_row, input_col, "Welcome to the chat! :) ");
+    mvprintw(input_row, input_col, "Type a message and press 'ENTER' to send: %s", input_buffer);
 }
 
 _Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_offset, int max_row, int input_row, int input_col,
                    char input_buffer[MAX_MESSAGE_LENGTH], int input_length) {
+
+    int message_bar_row;
+    message_bar_row = max_row - 3;
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
@@ -131,7 +131,7 @@ _Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_
         }
 
         // display user input
-        mvprintw(input_row, input_col, "%s", input_buffer);
+        print_sections(message_bar_row, input_row, input_col, input_buffer);
 
         // get user input
         int ch = getch();
@@ -212,8 +212,8 @@ void show_menu(Message messages[MAX_MESSAGES], int num_messages, int scroll_offs
             mvprintw(input_row + 3, 0, "Enter password: ");
             getnstr(user.password, MAX_PASSWORD_LENGTH);
             noecho();
-//            int valid = validate_credentials(user);
-            if (TRUE){
+            int valid = validate_credentials(user);
+            if (valid){
                 // start the chat
                 run((Message *) messages, num_messages, scroll_offset, max_row,
                     input_row, input_col, input_buffer, input_length);
@@ -248,7 +248,7 @@ void show_login_menu(){
     mvprintw(title_row, title_col, "*** Login ***");
     mvprintw(username_row, username_col, "Enter your username: ");
     mvprintw(password_row, password_col, "Enter your password: ");
-
+    move(username_row, username_col + strlen("Enter your username: "));
     refresh();
 }
 
@@ -273,4 +273,14 @@ void show_signup_menu(){
     mvprintw(password_row, password_col, "Enter a password: ");
 
     refresh();
+}
+
+int validate_credentials(User user){
+    const char* valid_username = "test";
+    const char* valid_password = "test";
+
+    if (strcmp(user.username, valid_username) == 0 && strcmp(user.password, valid_password) == 0){
+        return 1;
+    } else
+        return 0;
 }

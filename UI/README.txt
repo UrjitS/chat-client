@@ -18,3 +18,27 @@ Note that this code is only a starting point and may need to be modified dependi
 For example, you may want to add support for displaying usernames or timestamps, or you may want to add a graphical
 scroll bar instead of simply scrolling the chat history up and down.
 
+
+//        int ch = getch();
+//        if (ch == KEY_ENTER || ch == '\n'){
+//            // validate user credentials
+//            User user;
+//            echo();
+//            mvprintw(state->input_row + 2, 0, "Enter username: ");
+//            getnstr(user.username, MAX_USERNAME_LENGTH);
+//            mvprintw(state->input_row + 3, 0, "Enter password: ");
+//            getnstr(user.password, MAX_PASSWORD_LENGTH);
+//            noecho();
+//            int valid = validate_credentials(user);
+//            if (valid){
+//                // start the chat
+//                run(state);
+//            } else {
+//                // invalid credentials
+//                mvprintw(state->input_row + 5, 0, "Invalid username or password. Press any key to continue.");
+//                getch();
+//            }
+//        } else if (ch == KEY_DOWN || ch == KEY_UP) {
+//            // switch between login and signup menu
+//            is_login = !is_login;
+//        }
