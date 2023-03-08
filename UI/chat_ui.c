@@ -1,10 +1,8 @@
 //
 // Created by chika on 07/03/23.
 //
-#include <stdio.h>
 #include <ncurses.h>
 #include <string.h>
-#include <curses.h>
 #include <signal.h>
 #include <time.h>
 
