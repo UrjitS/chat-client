@@ -1,5 +1,4 @@
 #include <arpa/inet.h>
-#include <dc_c/dc_ctype.h>
 #include <dc_c/dc_signal.h>
 #include <dc_c/dc_stdio.h>
 #include <dc_c/dc_stdlib.h>
@@ -272,24 +271,34 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
             printf("Read from client\n");
             dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
 
+            char data[1024];
             struct binary_header_field header;
             header.version = 0x1;
             header.type = CREATE;
             header.object = MESSAGE;
-            header.body_size = 0;
+            header.body_size = dc_strlen(env, "Hello World\n");
 
+            // Stuff the header into an uint32_t
             uint32_t packet = ((header.version & 0xF) << 28) | ((header.type & 0xF) << 24) |
                               ((header.object & 0xFF) << 16) | (header.body_size & 0xFFFF);
 
+            // Convert to network byte order
             packet = htonl(packet);
+
+            // Copy the packet into the data buffer
+            dc_memcpy(env, data, &packet, sizeof(uint32_t));
+
+            // Add the body to the data buffer
+            dc_memcpy(env, data + sizeof(uint32_t), "Hello World\n", 12);
+
+            // Write the Data to the client
+            printf("Writing Data to client\n");
+            dc_write(env, err, client_sockets[i], &data, sizeof(data));
 
             printf("Packet version: %d\n", header.version);
             printf("Packet type:  0x%02X\n", header.type);
             printf("Packet object type: 0x%02X\n", header.object);
             printf("Packet body size: %d\n", header.body_size);
-
-            printf("Writing to client\n");
-            dc_write(env, err, client_sockets[i], &packet, sizeof(packet));
         }
     }
 }

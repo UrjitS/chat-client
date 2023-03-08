@@ -9,6 +9,7 @@
 
 #define SERVER_PORT 5000
 #define BUF_SIZE 256
+#define MAX_SIZE 1024
 
 
 enum Type {
@@ -32,7 +33,7 @@ struct binary_header_field {
     uint8_t object; // 8 bit object type
     uint16_t body_size; // 16 bit body size
 };
-struct binary_header_field deserialize(uint32_t value);
+struct binary_header_field * deserialize(uint32_t value);
 
 int main(int argc, char *argv[])
 {
@@ -85,17 +86,8 @@ int main(int argc, char *argv[])
         printf("Written to server\n");
         write(STDOUT_FILENO, buffer, n1);
 
-//        uint16_t read_number;
-//        ssize_t m = recv(socket_fd, &read_number, BUF_SIZE, 0);
-//
-//        if (m < 0)
-//        {
-//            perror("recv");
-//            return EXIT_FAILURE;
-//        }
-//        read_number = ntohs(read_number);
-//        printf("Server Read: %d\n", read_number);
         uint32_t header;
+        char body[MAX_SIZE];
         ssize_t n;
 
         // receive header from server
@@ -104,34 +96,31 @@ int main(int argc, char *argv[])
             perror("read error");
             exit(EXIT_FAILURE);
         }
+
         header = ntohl(header);
-        struct binary_header_field binaryHeaderField = deserialize(header);
-        // deserialize header
-        binaryHeaderField.version = binaryHeaderField.version;
-        binaryHeaderField.type = binaryHeaderField.type;
-        binaryHeaderField.object = binaryHeaderField.object;
-        binaryHeaderField.body_size = binaryHeaderField.body_size;
+        struct binary_header_field * binaryHeaderField = deserialize(header);
 
         // print deserialized header
-        printf("Version: %d\n", binaryHeaderField.version);
-        printf("Type: %d\n", binaryHeaderField.type);
-        printf("Object: %d\n", binaryHeaderField.object);
-        printf("Body Size: %d\n", binaryHeaderField.body_size);
-
+        printf("Version: %d\n", binaryHeaderField->version);
+        printf("Type: %d\n", binaryHeaderField->type);
+        printf("Object: %d\n", binaryHeaderField->object);
+        printf("Body Size: %d\n", binaryHeaderField->body_size);
+        printf("N: %zd\n", n);
+        read(socket_fd, &body, MAX_SIZE);
+        body[(binaryHeaderField->body_size+1)] = '\0';
+        printf("Body: %s\n", body);
     }
-
-
 
     close(socket_fd);
 
     return EXIT_SUCCESS;
 }
 
-struct binary_header_field deserialize(uint32_t value) {
-    struct binary_header_field header;
-    header.version = (value >> 28) & 0x0F;
-    header.type = (value >> 24) & 0x0F;
-    header.object = (value >> 16) & 0xFF;
-    header.body_size = value & 0xFFFF;
+struct binary_header_field * deserialize(uint32_t value) {
+    struct binary_header_field * header;
+    header->version = (value >> 28) & 0x0F;
+    header->type = (value >> 24) & 0x0F;
+    header->object = (value >> 16) & 0xFF;
+    header->body_size = value & 0xFFFF;
     return header;
 }
