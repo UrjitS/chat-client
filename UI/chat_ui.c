@@ -25,55 +25,58 @@ typedef struct {
     int sender;
 } Message;
 
-void values_init(Message *messages);
+typedef struct {
+    Message messages[MAX_MESSAGES];
+    char input_buffer[MAX_MESSAGE_LENGTH];
+    int num_messages;
+    int scroll_offset;
+    int max_row;
+    int max_col;
+    int input_row;
+    int input_col;
+    int input_length;
+    int message_bar_row;
+}ChatState;
+
+void values_init(ChatState *chat);
 void init_ncurses();
-void print_sections(int message_bar_row, int input_row, int input_col, char input_buffer[MAX_MESSAGE_LENGTH]);
+void print_sections(ChatState *chat);
 void show_login_menu();
 void show_signup_menu();
 int validate_credentials(User user);
-void show_menu(Message messages[MAX_MESSAGES], int num_messages, int scroll_offset, int max_row, int input_row, int input_col,
-               char input_buffer[MAX_MESSAGE_LENGTH], int input_length);
-
-_Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_offset, int max_row, int input_row, int input_col,
-                   char input_buffer[MAX_MESSAGE_LENGTH], int input_length);
+void show_menu(ChatState *chat);
+_Noreturn void run(ChatState *chat);
 
 int main() {
-    // array to store chat history
-    Message messages[MAX_MESSAGES];
-    values_init(messages);
+    ChatState chatState;
+    values_init(&chatState);
     endwin();
     return 0;
 }
 
-void values_init(Message *messages) {
+/**
+ * initializes values of the ChatState struct and calls the show_menu() or run_menu() function
+ *
+ * @param chat the ChatState struct
+ * */
+void values_init(ChatState *chat) {
     // number of messages in chat history
-    int num_messages = 0;
+    chat->num_messages = 0;
     // number of messages to scroll up or down by
-    int scroll_offset = 0;
-    // maximum row and column dimensions of terminal window
-    int max_row, max_col;
-    // row and column where user input starts
-    int input_row, input_col;
-    // buffer to store user input
-    char input_buffer[MAX_MESSAGE_LENGTH];
+    chat->scroll_offset = 0;
     // length of user input
-    int input_length = 0;
+    chat->input_length = 0;
 
     init_ncurses();
 
     // get maximum row and column dimensions of terminal window
-    getmaxyx(stdscr, max_row, max_col);
+    getmaxyx(stdscr, chat->max_row, chat->max_col);
 
-    input_row = max_row - 2;
-    input_col = 2;
-    //print_sections(message_bar_row, input_row);
+    chat->input_row = chat->max_row - 2;
+    chat->input_col = 2;
 
-//    run(messages, num_messages, scroll_offset, max_row, max_col, input_row, input_col, input_buffer,
-//        input_length);
-
-    show_menu(messages, num_messages, scroll_offset, max_row, input_row, input_col, input_buffer, input_length);
-
-//    run(messages, num_messages, scroll_offset, max_row, input_row, input_col, input_buffer, input_length);
+    show_menu(chat);
+//    run(chat);
 }
 
 /**
@@ -87,20 +90,23 @@ void init_ncurses() {
 }
 
 /**
- * sets up message bar and user input sections
+ *  prints out the specified text in the chat window
  *
- * @param max_row max row to be set
+ * @param chat ChatState struct
  * */
-void print_sections(int message_bar_row, int input_row, int input_col, char input_buffer[MAX_MESSAGE_LENGTH]) {
-    mvprintw(message_bar_row, input_col, "Welcome to the chat! :) ");
-    mvprintw(input_row, input_col, "Type a message and press 'ENTER' to send: %s", input_buffer);
+void print_sections(ChatState *chat) {
+    mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
+    mvprintw(chat->input_row, chat->input_col, "Type a message and press 'ENTER' to send: %s", chat->input_buffer);
 }
 
-_Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_offset, int max_row, int input_row, int input_col,
-                   char input_buffer[MAX_MESSAGE_LENGTH], int input_length) {
+/**
+ * this function displays the chat window, in here you see the messages sent. It also resizes the window
+ *
+ * @param chat ChatState struct
+ * */
+_Noreturn void run(ChatState *chat) {
 
-    int message_bar_row;
-    message_bar_row = max_row - 3;
+    chat->message_bar_row = chat->max_row - 3;
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
@@ -111,74 +117,73 @@ _Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_
         getmaxyx(stdscr, cur_row, cur_col);
 
         // handle window resize
-        if (cur_row != max_row || cur_col != MAX_MESSAGE_LENGTH + 2){
-            max_row = cur_row;
+        if (cur_row != chat->max_row || cur_col != MAX_MESSAGE_LENGTH + 2){
+            chat->max_row = cur_row;
             clear();
         }
 
         // print messages
-        for (int i = 0; i < max_row - 4 && i + scroll_offset < num_messages; ++i) {
+        for (int i = 0; i < chat->max_row - 4 && i + chat->scroll_offset < chat->num_messages; ++i) {
             // print messages with sender indicated
-            if (messages[i + scroll_offset].sender == 0) {
+            if (chat->messages[i + chat->scroll_offset].sender == 0) {
                 mvprintw(i + 1, 0, "[%s] You: %s",
-                         messages[i + scroll_offset].timestamp, messages[i + scroll_offset].text);
+                         chat->messages[i + chat->scroll_offset].timestamp, chat->messages[i + chat->scroll_offset].text);
             } else {
                 mvprintw(i + 1, 0, "[%s] Stranger: %s",
-                         messages[i + scroll_offset].timestamp, messages[i + scroll_offset].text);
+                         chat->messages[i + chat->scroll_offset].timestamp, chat->messages[i + chat->scroll_offset].text);
             }
         }
 
         // display user input
-        print_sections(message_bar_row, input_row, input_col, input_buffer);
-
+        print_sections(chat);
         // get user input
         int ch = getch();
         if (ch == KEY_ENTER || ch == '\n') {
             // add user input to chat history with sender set to 0
             time_t t = time(NULL);
             struct tm *tm = localtime(&t);
-            strftime(messages[num_messages].timestamp,
-                     sizeof(messages[num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
-            strncpy(messages[num_messages].text, input_buffer, MAX_MESSAGE_LENGTH);
-            messages[num_messages].sender = 0;
-            num_messages++;
-            if (num_messages > MAX_MESSAGES) {
+            strftime(chat->messages[chat->num_messages].timestamp,
+                     sizeof(chat->messages[chat->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+            strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
+            chat->messages[chat->num_messages].sender = 0;
+            chat->num_messages++;
+            if (chat->num_messages > MAX_MESSAGES) {
                 // if chat history is full, remove the oldest message
                 for (int i = 0; i < MAX_MESSAGES - 1; ++i) {
-                    messages[i].text[0] = messages[i+1].text[0];
-                    messages[i].sender = messages[i+1].sender;
-                    strcpy(messages[i].timestamp, messages[i+1].timestamp);
+                    chat->messages[i].text[0] = chat->messages[i+1].text[0];
+                    chat->messages[i].sender = chat->messages[i+1].sender;
+                    strcpy(chat->messages[i].timestamp, chat->messages[i+1].timestamp);
                 }
-                num_messages = MAX_MESSAGES;
+                chat->num_messages = MAX_MESSAGES;
             }
             // clear input buffer and reset input length
-            memset(input_buffer, 0, MAX_MESSAGE_LENGTH);
-            input_length = 0;
+            memset(chat->input_buffer, 0, MAX_MESSAGE_LENGTH);
+            chat->input_length = 0;
         }
         else if (ch == KEY_BACKSPACE || ch == 127 || ch == KEY_DC)
         {
             // delete character from input buffer
-            if (input_length > 0)
+            if (chat->input_length > 0)
             {
-                input_buffer[input_length - 1] = '\0';
-                input_length--;
+                chat->input_buffer[chat->input_length - 1] = '\0';
+                chat->input_length--;
             }
         }
         else if (ch == KEY_UP)
         {
             // scroll up chat history
-            if (scroll_offset < num_messages - max_row + 4)
+            if (chat->scroll_offset < chat->num_messages - chat->max_row + 4)
             {
-                scroll_offset--;
+                chat->scroll_offset--;
             }
         }
-        else if (ch >= 32 && ch <= 126 && input_length < MAX_MESSAGE_LENGTH + 1)
+        else if (ch >= 32 && ch <= 126 && chat->input_length < MAX_MESSAGE_LENGTH + 1)
         {
             // character to input buffer
-            if (input_length < MAX_MESSAGE_LENGTH - 1)
+            if (chat->input_length < MAX_MESSAGE_LENGTH - 1)
             {
-                input_buffer[input_length] = ch;
-                input_length++;
+                chat->input_buffer[chat->input_length] = ch;
+                chat->input_length++;
             }
         }
         // clear screen
@@ -188,8 +193,13 @@ _Noreturn void run(Message messages[MAX_MESSAGES], int num_messages, int scroll_
     }
 }
 
-void show_menu(Message messages[MAX_MESSAGES], int num_messages, int scroll_offset, int max_row, int input_row, int input_col,
-               char input_buffer[MAX_MESSAGE_LENGTH], int input_length){
+/**
+ * this function shows the startup menu, it first shows the sign up window and if you press the down arrow key it shows
+ * the login window
+ *
+ * @param chat ChatState struct
+ * */
+void show_menu(ChatState *chat){
     int is_login = 0;
     while (1){
         clear();
@@ -205,19 +215,18 @@ void show_menu(Message messages[MAX_MESSAGES], int num_messages, int scroll_offs
             // validate user credentials
             User user;
             echo();
-            mvprintw(input_row + 2, 0, "Enter username: ");
+            mvprintw(chat->input_row + 2, 0, "Enter username: ");
             getnstr(user.username, MAX_USERNAME_LENGTH);
-            mvprintw(input_row + 3, 0, "Enter password: ");
+            mvprintw(chat->input_row + 3, 0, "Enter password: ");
             getnstr(user.password, MAX_PASSWORD_LENGTH);
             noecho();
             int valid = validate_credentials(user);
             if (valid){
                 // start the chat
-                run((Message *) messages, num_messages, scroll_offset, max_row,
-                    input_row, input_col, input_buffer, input_length);
+                run(chat);
             } else {
                 // invalid credentials
-                mvprintw(input_row + 5, 0, "Invalid username or password. Press any key to continue.");
+                mvprintw(chat->input_row + 5, 0, "Invalid username or password. Press any key to continue.");
                 getch();
             }
         } else if (ch == KEY_DOWN || ch == KEY_UP) {
@@ -227,6 +236,10 @@ void show_menu(Message messages[MAX_MESSAGES], int num_messages, int scroll_offs
     }
 }
 
+/**
+ * this displays the contents of the login menu
+ *
+ * */
 void show_login_menu(){
     clear();
 
@@ -250,6 +263,10 @@ void show_login_menu(){
     refresh();
 }
 
+/**
+ * this function displays the contents of the signup menu
+ *
+ * */
 void show_signup_menu(){
     clear();
 
@@ -269,16 +286,24 @@ void show_signup_menu(){
     mvprintw(title_row, title_col, "*** Sign Up ***");
     mvprintw(username_row, username_col, "Enter a username: ");
     mvprintw(password_row, password_col, "Enter a password: ");
+    move(username_row, username_col + strlen("Enter your username: "));
 
     refresh();
 }
 
+/**
+ * this function validates the Users credentials, it makes use of dummy data for now
+ *
+ * @param user User to me validated
+ * */
 int validate_credentials(User user){
+    int valid = 1, invalid = 0;
+
     const char* valid_username = "test";
     const char* valid_password = "test";
 
     if (strcmp(user.username, valid_username) == 0 && strcmp(user.password, valid_password) == 0){
-        return 1;
+        return valid;
     } else
-        return 0;
+        return invalid;
 }
