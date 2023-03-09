@@ -65,24 +65,59 @@ void resize_handler(ChatState *chat);
 _Noreturn void run(ChatState *chat);
 
 int main(int argc, char *argv[]) {
+    int communicate_to_client[2];
+    int client_to_ui[2];
     // check if server ip is provided
     if (argc < 2 || inet_addr(argv[1]) == (in_addr_t) (-1)) {
         printf("Usage: %s <server_ip>\n", argv[0]);
         return EXIT_FAILURE;
     }
+    // Create pipe
+    if (pipe(communicate_to_client) == -1) {
+        fprintf(stderr, "UI Pipe failed");
+        return 1;
+    }
+    if (pipe(client_to_ui) == -1) {
+        fprintf(stderr, "Client Pipe failed");
+        return 1;
+    }
 
+    // Fork process
     int num = fork();
+
     if (num == 0) {
+        close(communicate_to_client[1]);  // close the writing end of the pipe
+        close(client_to_ui[0]);  // close the reading end of the pipe
+
+        dup2(communicate_to_client[0], STDIN_FILENO);  // redirect the read end of the pipe to stdin
+        dup2(client_to_ui[1], STDOUT_FILENO);  // redirect stdout to the write end of the pipe
+
         // Open server in background
         char *args[] = {"./scalable_server", argv[1], NULL};
+
         execvp(args[0], args);
+
     } else {
         // parent process
         sleep(1);
+        close(communicate_to_client[0]);  // close the read end of the pipe
+        close(client_to_ui[1]);  // close the writing end of the pipe
+
+        const char *input_str = "hello world\n";
+        write(communicate_to_client[1], input_str, strlen(input_str));
+
+        // NOTE Read from client_to_ui[0] to get messages from server
         ChatState chatState;
         values_init(&chatState);
         endwin();
-        waitpid(num, NULL, 0);
+
+        // Wait for child process to finish
+        wait(NULL);
+        // Close all pipes and exit
+        close(communicate_to_client[1]);  // close the pipe
+        close(client_to_ui[0]);  // close the pipe
+        close(communicate_to_client[0]);
+        close(client_to_ui[1]);
         return EXIT_SUCCESS;
     }
 }
