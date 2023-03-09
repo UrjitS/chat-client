@@ -12,8 +12,11 @@ set(SANITIZE TRUE)
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 
-set(SOURCE_LIST ${SOURCE_DIR}/main.c)
-set(HEADER_LIST )
+set(SOURCE_LIST ${SOURCE_DIR}/main.c
+                ${SOURCE_DIR}/protocol_util.c
+                )
+set(HEADER_LIST ${INCLUDE_DIR}/protocol_util.h
+                )
 
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)

@@ -1,3 +1,4 @@
+#include "protocol_util.h"
 #include <arpa/inet.h>
 #include <dc_c/dc_signal.h>
 #include <dc_c/dc_stdio.h>
@@ -34,27 +35,6 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
 
 static volatile sig_atomic_t done = false;   // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
-enum Type {
-    CREATE = 0x1,
-    READ = 0x2,
-    UPDATE = 0x3,
-    DESTROY = 0x4,
-    PING = 0x8
-};
-
-enum Object {
-    USER = 0x01,
-    CHANNEL = 0x02,
-    MESSAGE = 0x03,
-    AUTH = 0x04
-};
-
-struct binary_header_field {
-    unsigned int version : 4; // 4 bit version number
-    unsigned int type : 4; // 4 bit type number
-    uint8_t object; // 8 bit object type
-    uint16_t body_size; // 16 bit body size
-};
 
 int main(void)
 {
@@ -271,34 +251,11 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
             printf("Read from client\n");
             dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
 
-            char data[1024];
-            struct binary_header_field header;
-            header.version = 0x1;
-            header.type = CREATE;
-            header.object = MESSAGE;
-            header.body_size = dc_strlen(env, "Hello World\n");
-
-            // Stuff the header into an uint32_t
-            uint32_t packet = ((header.version & 0xF) << 28) | ((header.type & 0xF) << 24) |
-                              ((header.object & 0xFF) << 16) | (header.body_size & 0xFFFF);
-
-            // Convert to network byte order
-            packet = htonl(packet);
-
-            // Copy the packet into the data buffer
-            dc_memcpy(env, data, &packet, sizeof(uint32_t));
-
-            // Add the body to the data buffer
-            dc_memcpy(env, data + sizeof(uint32_t), "Hello World\n", 12);
-
-            // Write the Data to the client
-            printf("Writing Data to client\n");
-            dc_write(env, err, client_sockets[i], &data, sizeof(data));
-
-            printf("Packet version: %d\n", header.version);
-            printf("Packet type:  0x%02X\n", header.type);
-            printf("Packet object type: 0x%02X\n", header.object);
-            printf("Packet body size: %d\n", header.body_size);
+            char message[] = "Hello World\n";
+            send_create_user(env, err, client_sockets[i], message);
+//            send_create_channel(env, err, client_sockets[i], message);
+//            send_create_message(env, err, client_sockets[i], message);
+//            send_create_auth(env, err, client_sockets[i], message);
         }
     }
 }

@@ -1,10 +1,13 @@
 //
 // Created by chika on 07/03/23.
 //
+#include <arpa/inet.h>
 #include <ncurses.h>
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 
 // max number of messages in chat history
 #define MAX_MESSAGES 100
@@ -47,11 +50,28 @@ int validate_credentials(User user);
 void show_menu(ChatState *chat);
 _Noreturn void run(ChatState *chat);
 
-int main() {
-    ChatState chatState;
-    values_init(&chatState);
-    endwin();
-    return 0;
+int main(int argc, char *argv[]) {
+    // check if server ip is provided
+    if (argc < 2 || inet_addr(argv[1]) == ( in_addr_t)(-1))
+    {
+        printf("Usage: %s <server_ip>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    int num = fork();
+    if (num == 0) {
+        // Open server in background
+        char *args[] = {"./scalable_server", argv[1], NULL};
+        execvp(args[0], args);
+    } else {
+        // parent process
+        sleep(1);
+        ChatState chatState;
+        values_init(&chatState);
+        endwin();
+        waitpid(num, NULL, 0);
+        return EXIT_SUCCESS;
+    }
 }
 
 /**

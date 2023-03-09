@@ -18,9 +18,10 @@ set(PROCESS_SERVER_SOURCE_LIST
         )
 set(PROCESS_SERVER_SOURCE_MAIN
         ${SOURCE_DIR}/main.c
+        ${SOURCE_DIR}/protocol_util.c
         )
 set(PROCESS_SERVER_HEADER_LIST
-        #${INCLUDE_DIR}/processor.h
+        ${INCLUDE_DIR}/protocol_util.h
         )
 set(PROCESS_SERVER_REQUIRED_LIBRARIES_LIST
         dc_error

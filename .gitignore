@@ -1,5 +1,6 @@
 .idea
 server/cmake-build-debug
+server/build
 ui/cmake-build-debug
-test client/cmake-build-debug
-test client/build
+client/cmake-build-debug
+client/build
