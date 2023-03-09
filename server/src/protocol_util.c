@@ -31,11 +31,11 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
         const char * body)
 {
     char data[DEFAULT_SIZE];
+
+    header->body_size = htons(header->body_size);
+
     uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) |
                       ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);
-
-    // Convert to network byte order.
-    packet = htonl(packet);
 
     // Copy the packet into the data buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));

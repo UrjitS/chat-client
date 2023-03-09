@@ -42,10 +42,10 @@ typedef struct {
 }ChatState;
 
 void values_init(ChatState *chat);
-void init_ncurses();
+void init_ncurses(void);
 void print_sections(ChatState *chat);
-void show_login_menu();
-void show_signup_menu();
+void show_login_menu(void);
+void show_signup_menu(void);
 int validate_credentials(User user);
 void show_menu(ChatState *chat);
 _Noreturn void run(ChatState *chat);
