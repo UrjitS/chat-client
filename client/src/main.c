@@ -26,20 +26,21 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <server_ip>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <server_ip>\n", argv[0]); // NOLINT(cert-err33-c)
         run_client = false;
     }
 
     err = dc_error_create(true);
     env = dc_env_create(err, true, NULL);
 
-    char buffer2[1024];
+    char buffer2[MAX_SIZE];
     ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
     if (num_read == -1) {
         perror("read failed");
-        exit(EXIT_FAILURE);
+        run_client = false;
     }
-    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2);
+
+    fprintf(stderr, "Child process received: %.*s", (int)num_read, buffer2); // NOLINT(cert-err33-c)
 
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[])
     }
 
     if (run_client) {
-        fprintf(stderr, "Connected to server.\n");
+        fprintf(stderr, "Connected to server.\n"); // NOLINT(cert-err33-c)
 
         while(fgets(buffer, MAX_SIZE, stdin) != NULL)
         {
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
             }
 
-            fprintf(stderr, "Written to server\n");
+            fprintf(stderr, "Written to server\n"); // NOLINT(cert-err33-c)
             write(STDOUT_FILENO, buffer, n1);
 
             uint32_t header;
@@ -95,15 +96,15 @@ int main(int argc, char *argv[])
             struct binary_header_field * binaryHeaderField = deserialize_header(header);
 
             // print deserialized header
-            fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-            fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-            fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-            fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+            fprintf(stderr, "Version: %d\n", binaryHeaderField->version); // NOLINT(cert-err33-c)
+            fprintf(stderr, "Type: %d\n", binaryHeaderField->type); // NOLINT(cert-err33-c)
+            fprintf(stderr, "Object: %d\n", binaryHeaderField->object); // NOLINT(cert-err33-c)
+            fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size); // NOLINT(cert-err33-c)
 
             // Read body and clear buffer
             read(socket_fd, &body, MAX_SIZE);
             body[(binaryHeaderField->body_size)] = '\0';
-            fprintf(stderr, "Body: %s\n", body);
+            fprintf(stderr, "Body: %s\n", body); // NOLINT(cert-err33-c)
         }
 //    while (true) {
 //        // Check semaphore and if data then read, parse and send to server
@@ -123,17 +124,17 @@ int main(int argc, char *argv[])
 //            struct binary_header_field * binaryHeaderField = deserialize_header(header);
 //
 //            // print deserialized header
-//            fprintf(stderr, "Version: %d\n", binaryHeaderField->version);
-//            fprintf(stderr, "Type: %d\n", binaryHeaderField->type);
-//            fprintf(stderr, "Object: %d\n", binaryHeaderField->object);
-//            fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size);
+//            fprintf(stderr, "Version: %d\n", binaryHeaderField->version); // NOLINT(cert-err33-c)
+//            fprintf(stderr, "Type: %d\n", binaryHeaderField->type); // NOLINT(cert-err33-c)
+//            fprintf(stderr, "Object: %d\n", binaryHeaderField->object); // NOLINT(cert-err33-c)
+//            fprintf(stderr, "Body Size: %d\n", binaryHeaderField->body_size); // NOLINT(cert-err33-c)
 //            // Read body and clear buffer
 //            read(socket_fd, &body, MAX_SIZE);
 //            body[(binaryHeaderField->body_size)] = '\0';
-//            fprintf(stderr, "Body: %s\n", body);
+//            fprintf(stderr, "Body: %s\n", body); // NOLINT(cert-err33-c)
 //        }
 //    }
-        fprintf(stderr, "Client Disconnected.\n");
+        fprintf(stderr, "Client Disconnected.\n"); // NOLINT(cert-err33-c)
     }
 
     free(env);

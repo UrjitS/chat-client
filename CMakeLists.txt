@@ -9,13 +9,13 @@ set(CMAKE_C_STANDARD 11)
 
 set(SANITIZE TRUE)
 
-set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
-set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(SOURCE_DIR ./client/src)
+set(INCLUDE_DIR ./client/include)
 
-set(SOURCE_LIST ./client/src/main.c
-        ./client/src/protocol_util.c
+set(SOURCE_LIST ${SOURCE_DIR}/main.c
+        ${SOURCE_DIR}/protocol_util.c
                 )
-set(HEADER_LIST ./client/include/protocol_util.h
+set(HEADER_LIST ${INCLUDE_DIR}/protocol_util.h
                 )
 
 add_executable(chat_client
