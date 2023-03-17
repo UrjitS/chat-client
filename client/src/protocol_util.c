@@ -4,8 +4,9 @@
 #include <dc_c/dc_string.h>
 #include <dc_env/env.h>
 #include <dc_error/error.h>
+#include <dc_posix/dc_unistd.h>
 #include <netinet/in.h>
-#include <dc_util/io.h>
+
 
 void display_header(struct binary_header_field * header, const char * data)
 {
@@ -20,30 +21,36 @@ void display_header(struct binary_header_field * header, const char * data)
 struct binary_header_field * deserialize_header(uint32_t value) {
     struct binary_header_field * header;
     header = malloc(sizeof(struct binary_header_field));
-    header->version = (value >> 28) & 0x0F;
-    header->type = (value >> 24) & 0x0F;
-    header->object = (value >> 16) & 0xFF;
-    header->body_size = value & 0xFFFF;
+    header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    header->object = (value >> 16) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    header->body_size = value & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+
     header->body_size = ntohs(header->body_size);
+
     return header;
 }
 
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body)
 {
-    char * data = dc_malloc(env, err, (sizeof(uint32_t) + dc_strlen(env, body)));
+    char data[DEFAULT_SIZE];
 
+    // Convert to network byte order.
+    header->body_size = htons(header->body_size);
 
-    uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) |
-                      ((header->object & 0xFF) << 16) | ((htons(header->body_size)) & 0xFFFF);
+    // Create the packet
+    uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+                      ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+
 
     // Copy the packet into the data buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));
 
     // Add the body to the data buffer
-    dc_memcpy(env, data + sizeof(uint32_t), body, header->body_size);
+    dc_memcpy(env, data + sizeof(uint32_t), body, dc_strlen(env, body));
 
-    dc_write_fully(env, err, fd, data, (sizeof(uint32_t) + dc_strlen(env, body)));
+    dc_write(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
 }
 
 /**
@@ -286,9 +293,3 @@ void send_delete_auth(struct dc_env *env, struct dc_error *err, int fd, const ch
     // Send the header
     serialize_header(env, err, &header, fd, body);
 }
-
-
-
-
-
-
