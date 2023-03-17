@@ -1,20 +1,17 @@
+This is a chat client application written in C that interacts with a scalable chat server. It uses ncurses for user
+interface and communicates with the server using pipes. The main function reads a server IP address as a command-line
+argument and creates two pipes for communication. Then, it forks a process and runs the scalable server in the
+child process. The parent process then waits for the child process to finish, closes all pipes, and exits.
 
-This code creates a basic chat UI with a message bar and user input section.
-The chat history is stored in a two-dimensional array of characters, and up to `MAX_MESSAGES` messages can be stored.
-The `scroll_offset` variable keeps track of how many messages to scroll up or down by.
+The ChatState struct stores the state of the chat client, including the chat history, user input, and scroll offset.
+The values_init() function initializes the values of the ChatState struct and calls the run() function. The run()
+function displays the chat window, prints messages, handles window resizes, and displays user input.
 
-In the main loop, the chat history is displayed by iterating through the array and printing each message to the screen.
+The print_sections() function prints out the specified text in the chat window, and the print_messages() function prints
+the chat history. The get_user_input() function gets user input from the keyboard and handles user input events.
 
-The user input is displayed at the bottom of the screen, and user input is read from the keyboard using the `getch()` function.
+The show_login_menu() and show_signup_menu() functions display the login and sign-up menus, respectively.
+The validate_credentials() function validates user credentials by comparing them with stored user credentials.
 
-If the user presses Enter, the input is added to the chat history array, and if the array is full, the oldest message is removed.
-
-If the user presses Backspace, the last character is removed from the input buffer. If the user presses the up or down arrow keys,
-the chat history is scrolled up or down, respectively. If the user types a printable character, it is added to the input buffer.
-
-Finally, the screen is cleared and refreshed to update the display. The program runs in an infinite loop until it is terminated by the user.
-
-Note that this code is only a starting point and may need to be modified depending on your specific requirements.
-For example, you may want to add support for displaying usernames or timestamps, or you may want to add a graphical
-scroll bar instead of simply scrolling the chat history up and down.
-
+Overall, this chat client application provides a basic chat interface and communicates with the scalable chat server
+using pipes. It can be improved by adding more features such as private messaging, file sharing, and user profiles.
