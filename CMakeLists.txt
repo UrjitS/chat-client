@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.22)
 
 project(scalable_server
         VERSION 0.2.1
@@ -171,6 +171,7 @@ find_library(LIBDC_FSM dc_fsm REQUIRED)
 find_library(LIB_CONFIG config REQUIRED)
 find_library(LIBDC_APPLICATION dc_application REQUIRED)
 
+
 target_link_libraries(scalable_server PUBLIC ${LIBDC_ERROR})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_ENV})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_C})
@@ -180,6 +181,8 @@ target_link_libraries(scalable_server PUBLIC ${LIBDC_UTIL})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_FSM})
 target_link_libraries(scalable_server PUBLIC ${LIB_CONFIG})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_APPLICATION})
+target_link_libraries(scalable_server PRIVATE -lbsd)
+
 
 set_target_properties(scalable_server PROPERTIES
         VERSION ${PROJECT_VERSION}
