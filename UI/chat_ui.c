@@ -1,6 +1,3 @@
-//
-// Created by chika on 07/03/23.
-//
 #include <arpa/inet.h>
 #include <ncurses.h>
 #include <string.h>
@@ -67,13 +64,7 @@ _Noreturn void run(ChatState *chat);
 
 int validate_credentials(User *user);
 
-char *getUsername(User *user);
-
-char *getPassword(User *user);
-
 int main(int argc, char *argv[]) {
-//    int communicate_to_client[2];
-//    int client_to_ui[2];
     ChatState *chatState = malloc(sizeof(ChatState));
 
     // check if server ip is provided
@@ -112,17 +103,10 @@ int main(int argc, char *argv[]) {
         close(chatState->communicate_to_client[0]);  // close the read end of the pipe
         close(chatState->client_to_ui[1]);  // close the writing end of the pipe
 
-        // will change this when I am done, it's just for reference
-//        User *user2 = show_login_menu(chatState);
-//        char input_str2[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
-//        sprintf(input_str2, "u: %s p: %s ", user2->username, user2->password);
-//        write(chatState->communicate_to_client[1], input_str2, strlen(input_str2));
-
-
         // NOTE Read from client_to_ui[0] to get messages from server
+        //write(chatState->communicate_to_client[1], chatState->input, strlen(chatState->input));
         values_init(chatState);
         show_menu(chatState);
-//        write(chatState->communicate_to_client[1], chatState->input, strlen(chatState->input));
         endwin();
 
         // Wait for child process to finish
@@ -273,21 +257,14 @@ void show_login_menu(ChatState *chat) {
     mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
 
     User *user = malloc(sizeof(User));
-//    strcpy(user->username, username);
-//    strcpy(user->password, password);
-
-//     when i do the memset, the validation doesn't work
     memset(user->username, 0, MAX_USERNAME_LENGTH);
     memset(user->password, 0, MAX_PASSWORD_LENGTH);
-
-//     wondering if i should do this before or after the memset
-//    strcpy(user->username, username);
-//    strcpy(user->password, password);
+    strcpy(user->username, username);
+    strcpy(user->password, password);
 
     // it kinda works lol
-    //char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
     sprintf(chat->input, "u:%s p:%s ", username, password);
-    write(chat->communicate_to_client[1], chat->input, strlen(chat->input));
+    read(chat->communicate_to_client[1], chat->input, strlen(chat->input));
 
     int valid = validate_credentials(user);
     if (valid == 1) {
@@ -331,7 +308,6 @@ void show_signup_menu() {
     // Read password input and display asterisks instead of the actual characters
     char password[MAX_PASSWORD_LENGTH];
     getstr(password);
-//    mvprintw(password_row, password_col + strlen("Enter a password: "), "%s", "****");
     mvprintw(password_row, password_col + strlen("Enter a password: "), "%s", password);
 
     refresh();
@@ -434,16 +410,4 @@ void get_user_input(ChatState *chat) {
             chat->input_length++;
         }
     }
-}
-
-char *getUsername(User *user) {
-    char *username = malloc(sizeof(char) * (strlen(user->username) + 1));
-    strcpy(username, user->username);
-    return username;
-}
-
-char *getPassword(User *user) {
-    char *password = malloc(sizeof(char) * (strlen(user->password) + 1));
-    strcpy(password, user->username);
-    return password;
 }
