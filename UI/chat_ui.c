@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
     Message messages[MAX_MESSAGES];
     char input_buffer[MAX_MESSAGE_LENGTH];
+    char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
     int num_messages;
     int scroll_offset;
     int max_row;
@@ -40,6 +41,8 @@ typedef struct {
     int input_col;
     int input_length;
     int message_bar_row;
+    int communicate_to_client[2];
+    int client_to_ui[2];
 } ChatState;
 
 void values_init(ChatState *chat);
@@ -48,11 +51,9 @@ void init_ncurses(void);
 
 void print_sections(ChatState *chat);
 
-void show_login_menu(User *user, ChatState *chat);
+void show_login_menu(ChatState *chat);
 
 void show_signup_menu(void);
-
-int validate_credentials(User *user);
 
 void print_messages(ChatState *chat);
 
@@ -60,25 +61,32 @@ void get_user_input(ChatState *chat);
 
 void resize_handler(ChatState *chat);
 
-
-_Noreturn void show_menu(ChatState *chat);
+void show_menu(ChatState *chat);
 
 _Noreturn void run(ChatState *chat);
 
+int validate_credentials(User *user);
+
+char *getUsername(User *user);
+
+char *getPassword(User *user);
+
 int main(int argc, char *argv[]) {
-    int communicate_to_client[2];
-    int client_to_ui[2];
+//    int communicate_to_client[2];
+//    int client_to_ui[2];
+    ChatState *chatState = malloc(sizeof(ChatState));
+
     // check if server ip is provided
     if (argc < 2 || inet_addr(argv[1]) == (in_addr_t) (-1)) {
         printf("Usage: %s <server_ip>\n", argv[0]);
         return EXIT_FAILURE;
     }
     // Create pipe
-    if (pipe(communicate_to_client) == -1) {
+    if (pipe(chatState->communicate_to_client) == -1) {
         fprintf(stderr, "UI Pipe failed");
         return 1;
     }
-    if (pipe(client_to_ui) == -1) {
+    if (pipe(chatState->client_to_ui) == -1) {
         fprintf(stderr, "Client Pipe failed");
         return 1;
     }
@@ -87,11 +95,11 @@ int main(int argc, char *argv[]) {
     int num = fork();
 
     if (num == 0) {
-        close(communicate_to_client[1]);  // close the writing end of the pipe
-        close(client_to_ui[0]);  // close the reading end of the pipe
+        close(chatState->communicate_to_client[1]);  // close the writing end of the pipe
+        close(chatState->client_to_ui[0]);  // close the reading end of the pipe
 
-        dup2(communicate_to_client[0], STDIN_FILENO);   // redirect the read end of the pipe to stdin
-        dup2(client_to_ui[1], STDOUT_FILENO);  // redirect stdout to the write end of the pipe
+        dup2(chatState->communicate_to_client[0], STDIN_FILENO);   // redirect the read end of the pipe to stdin
+        dup2(chatState->client_to_ui[1], STDOUT_FILENO);  // redirect stdout to the write end of the pipe
 
         // Open server in background
         char *args[] = {"./scalable_server", argv[1], NULL};
@@ -101,35 +109,36 @@ int main(int argc, char *argv[]) {
     } else {
         // parent process
         sleep(1);
-        close(communicate_to_client[0]);  // close the read end of the pipe
-        close(client_to_ui[1]);  // close the writing end of the pipe
+        close(chatState->communicate_to_client[0]);  // close the read end of the pipe
+        close(chatState->client_to_ui[1]);  // close the writing end of the pipe
 
         // will change this when I am done, it's just for reference
-        User user;
-        strncpy(user.username, "DUMMY", MAX_USERNAME_LENGTH);
-        strncpy(user.password, "DUMMY", MAX_PASSWORD_LENGTH);
-        char input_str[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
-        sprintf(input_str, "u: %s p: %s ", user.username, user.password);
-        write(communicate_to_client[1], input_str, strlen(input_str));
+//        User *user2 = show_login_menu(chatState);
+//        char input_str2[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
+//        sprintf(input_str2, "u: %s p: %s ", user2->username, user2->password);
+//        write(chatState->communicate_to_client[1], input_str2, strlen(input_str2));
+
 
         // NOTE Read from client_to_ui[0] to get messages from server
-        ChatState chatState;
-        values_init(&chatState);
+        values_init(chatState);
+        show_menu(chatState);
+//        write(chatState->communicate_to_client[1], chatState->input, strlen(chatState->input));
         endwin();
 
         // Wait for child process to finish
         wait(NULL);
         // Close all pipes and exit
-        close(communicate_to_client[0]);
-        close(communicate_to_client[1]);  // close the pipe
-        close(client_to_ui[0]);  // close the pipe
-        close(client_to_ui[1]);
+        close(chatState->communicate_to_client[0]);
+        close(chatState->communicate_to_client[1]);  // close the pipe
+        close(chatState->client_to_ui[0]);  // close the pipe
+        close(chatState->client_to_ui[1]);
+        free(chatState);
         return EXIT_SUCCESS;
     }
 }
 
 /**
- * initializes values of the ChatState struct and calls the show_menu() or run_menu() function
+ * initializes values of the ChatState struct
  *
  * @param chat the ChatState struct
  * */
@@ -148,9 +157,6 @@ void values_init(ChatState *chat) {
 
     chat->input_row = chat->max_row - 2;
     chat->input_col = 2;
-
-    show_menu(chat);
-//    run(chat);
 }
 
 /**
@@ -206,19 +212,21 @@ _Noreturn void run(ChatState *chat) {
  *
  * @param chat ChatState struct
  * */
-_Noreturn void show_menu(ChatState *chat) {
-    User user;
+void show_menu(ChatState *chat) {
     int is_login = 0;
     while (1) {
         clear();
-        if (is_login) {
-            show_login_menu(&user, chat);
-//            show_login_menu();
-        } else {
-            show_signup_menu();
+        switch(is_login) {
+            case 0:
+                show_signup_menu();
+                break;
+            case 1:
+                show_login_menu(chat);
+                break;
+            default:
+                break;
         }
         refresh();
-
         int ch = getch();
         if (ch == KEY_DOWN || ch == KEY_UP) {
             // switch between login and signup menu
@@ -227,13 +235,13 @@ _Noreturn void show_menu(ChatState *chat) {
     }
 }
 
+
 /**
  * this displays the contents of the login menu
  *
  * */
-void show_login_menu(User *user, ChatState *chat) {
+void show_login_menu(ChatState *chat) {
     clear();
-
     // Define variables for menu positions
     int title_row, title_col, username_row, username_col, password_row, password_col;
 
@@ -254,7 +262,6 @@ void show_login_menu(User *user, ChatState *chat) {
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
-    strcpy(user->username, username);
     mvprintw(username_row, username_col + strlen("Enter your username: "), "%s", username);
 
     mvprintw(password_row, password_col, "Enter your password: ");
@@ -263,14 +270,29 @@ void show_login_menu(User *user, ChatState *chat) {
     // Read password input and display asterisks instead of the actual characters
     char password[MAX_PASSWORD_LENGTH];
     getstr(password);
-    strcpy(user->password, password);
     mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
+
+    User *user = malloc(sizeof(User));
+//    strcpy(user->username, username);
+//    strcpy(user->password, password);
+
+//     when i do the memset, the validation doesn't work
+    memset(user->username, 0, MAX_USERNAME_LENGTH);
+    memset(user->password, 0, MAX_PASSWORD_LENGTH);
+
+//     wondering if i should do this before or after the memset
+//    strcpy(user->username, username);
+//    strcpy(user->password, password);
+
+    // it kinda works lol
+    //char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 10];
+    sprintf(chat->input, "u:%s p:%s ", username, password);
+    write(chat->communicate_to_client[1], chat->input, strlen(chat->input));
 
     int valid = validate_credentials(user);
     if (valid == 1) {
         run(chat);
     }
-
     refresh();
 }
 
@@ -412,4 +434,16 @@ void get_user_input(ChatState *chat) {
             chat->input_length++;
         }
     }
+}
+
+char *getUsername(User *user) {
+    char *username = malloc(sizeof(char) * (strlen(user->username) + 1));
+    strcpy(username, user->username);
+    return username;
+}
+
+char *getPassword(User *user) {
+    char *password = malloc(sizeof(char) * (strlen(user->password) + 1));
+    strcpy(password, user->username);
+    return password;
 }
