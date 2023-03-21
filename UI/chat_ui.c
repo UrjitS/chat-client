@@ -273,9 +273,11 @@ void show_login_menu(ChatState *chat) {
     password[strlen(password)] = '\0';
     strcpy(user->username, username);
     strcpy(user->password, password);
-
-    const char *input_str = "hello world\n";
-    write(*chat->communicate_to_client, input_str, strlen(input_str));
+    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
+    //const char *input_str = "test test\n";
+    write(*chat->communicate_to_client, chat->input, strlen(chat->input));
+//    const char *input_str = "hello world\n";
+//    write(*chat->communicate_to_client, input_str, strlen(input_str));
 
     int valid = validate_credentials(user);
     if (valid == 1) {
