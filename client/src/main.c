@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
     char buffer2[1024];
     ssize_t num_read = read(STDIN_FILENO, buffer2, sizeof(buffer2));
     if (num_read == -1) {
-        perror("read failed");
         exit(EXIT_FAILURE);
     }
     // Write the string to the file
@@ -57,7 +56,6 @@ int main(int argc, char *argv[])
 
     if (socket_fd < 0)
     {
-        perror("socket");
         run_client = false;
     }
 
@@ -67,13 +65,11 @@ int main(int argc, char *argv[])
 
     if (inet_pton(AF_INET, argv[1], &server_addr.sin_addr) <= 0)
     {
-        perror("inet_pton");
         run_client = false;
     }
 
     if (connect(socket_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
-        perror("connect");
         run_client = false;
     }
 
@@ -86,7 +82,6 @@ int main(int argc, char *argv[])
 
             if (n1 < 0)
             {
-                perror("send");
                 return EXIT_FAILURE;
             }
 
@@ -100,7 +95,6 @@ int main(int argc, char *argv[])
             // receive header from server
             n = read(socket_fd, &header, sizeof(header));
             if (n < 0) {
-                perror("read error");
                 exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
             }
 

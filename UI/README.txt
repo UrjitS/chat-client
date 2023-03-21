@@ -11,7 +11,7 @@ The print_sections() function prints out the specified text in the chat window, 
 the chat history. The get_user_input() function gets user input from the keyboard and handles user input events.
 
 The show_login_menu() and show_signup_menu() functions display the login and sign-up menus, respectively.
-The validate_credentials() function validates user credentials by comparing them with stored user credentials.
+The validate_login_credentials() function validates user credentials by comparing them with stored user credentials.
 
 Overall, this chat client application provides a basic chat interface and communicates with the scalable chat server
 using pipes. It can be improved by adding more features such as private messaging, file sharing, and user profiles.
