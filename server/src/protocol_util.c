@@ -14,7 +14,7 @@ void display_header(struct binary_header_field * header, const char * data)
     printf("Packet type:  0x%02X\n", header->type);
     printf("Packet object type: 0x%02X\n", header->object);
     printf("Packet body size: %d\n", header->body_size);
-    printf("Packet body: %s\n", data);
+//    printf("Packet body: %s\n", data);
 }
 
 struct binary_header_field * deserialize_header(uint32_t value) {

@@ -36,13 +36,13 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 {
     char data[DEFAULT_SIZE];
 
-    // Convert to network byte order.
-    header->body_size = htons(header->body_size);
 
     // Create the packet
     uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
                       ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
+    // Convert to network byte order.
+    packet = htonl(packet);
 
     // Copy the packet into the data buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));
