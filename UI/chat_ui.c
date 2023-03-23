@@ -14,10 +14,12 @@
 // max length for username and password
 #define MAX_USERNAME_LENGTH 20
 #define MAX_PASSWORD_LENGTH 20
+#define MAX_EMAIL_LENGTH 50
 
 typedef struct {
     char username[MAX_USERNAME_LENGTH];
     char password[MAX_PASSWORD_LENGTH];
+    char email[MAX_EMAIL_LENGTH];
 } User;
 
 typedef struct {
@@ -29,7 +31,7 @@ typedef struct {
 typedef struct {
     Message messages[MAX_MESSAGES];
     char input_buffer[MAX_MESSAGE_LENGTH];
-    char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + 9];
+    char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + MAX_EMAIL_LENGTH + 9];
     int num_messages;
     int scroll_offset;
     int max_row;
@@ -38,8 +40,8 @@ typedef struct {
     int input_col;
     int input_length;
     int message_bar_row;
-    int * communicate_to_client;
-    int * client_to_ui;
+    int *communicate_to_client;
+    int *client_to_ui;
 } ChatState;
 
 void values_init(ChatState *chat);
@@ -86,7 +88,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
     // Fork process
     int num = fork();
 
@@ -114,11 +115,6 @@ int main(int argc, char *argv[]) {
         chatState->communicate_to_client = &communicate_to_client[1];
         chatState->client_to_ui = &client_to_ui[0];
 
-        // NOTE Read from chatState->client_to_ui to get messages from server
-//        const char *input_str = "hello world\n";
-//        write(*chatState->communicate_to_client, input_str, strlen(input_str));
-
-        //write(chatState->communicate_to_client, chatState->input, strlen(chatState->input));
         values_init(chatState);
         show_menu(chatState);
         endwin();
@@ -179,6 +175,7 @@ void print_sections(ChatState *chat) {
  * this function displays the chat window, in here you see the messages sent. It also resizes the window
  *
  * @param chat ChatState struct
+ * @param user User struct
  * */
 _Noreturn void run(ChatState *chat, User *user) {
     chat->message_bar_row = chat->max_row - 3;
@@ -212,7 +209,7 @@ void show_menu(ChatState *chat) {
     int is_login = 0;
     while (1) {
         clear();
-        switch(is_login) {
+        switch (is_login) {
             case 0:
                 show_signup_menu(chat);
                 break;
@@ -233,8 +230,9 @@ void show_menu(ChatState *chat) {
 
 
 /**
- * this displays the contents of the login menu
+ * this displays the contents of the login menu, prompts the user for their username and password
  *
+ * @param chat ChatState struct
  * */
 void show_login_menu(ChatState *chat) {
     clear();
@@ -269,10 +267,13 @@ void show_login_menu(ChatState *chat) {
     mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
 
     User *user = malloc(sizeof(User));
+
     memset(user->username, 0, MAX_USERNAME_LENGTH);
     memset(user->password, 0, MAX_PASSWORD_LENGTH);
+
     username[strlen(username)] = '\0';
     password[strlen(password)] = '\0';
+
     strcpy(user->username, username);
     strcpy(user->password, password);
 
@@ -287,14 +288,15 @@ void show_login_menu(ChatState *chat) {
 }
 
 /**
- * this function displays the contents of the signup menu
+ * this function displays the contents of the signup menu, prompts the user for a username, password and email
  *
+ * @param chat ChatState struct
  * */
 void show_signup_menu(ChatState *chat) {
     clear();
 
     // Define variables for menu positions
-    int title_row, title_col, username_row, username_col, password_row, password_col;
+    int title_row, title_col, username_row, username_col, password_row, password_col, email_row, email_col;
 
     // Adjust positions based on terminal size
     getmaxyx(stdscr, title_row, title_col);
@@ -304,6 +306,8 @@ void show_signup_menu(ChatState *chat) {
     username_col = (title_col - strlen("Enter a username: ")) / 2;
     password_row = username_row + 1;
     password_col = (title_col - strlen("Enter a password: ")) / 2;
+    email_row = password_row + 1;
+    email_col = (title_col - strlen("Enter an email: ")) / 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Sign Up ***");
@@ -323,20 +327,35 @@ void show_signup_menu(ChatState *chat) {
     getstr(password);
     mvprintw(password_row, password_col + strlen("Enter a password: "), "%s", password);
 
+    mvprintw(email_row, email_col - 1, "Enter an email: ");
+    move(email_row, email_col + strlen("Enter an email: "));
+
+    // Read email input and display it
+    char email[MAX_EMAIL_LENGTH];
+    getstr(email);
+    mvprintw(email_row, email_col + strlen("Enter an email: "), "%s", email);
+
     User *user = malloc(sizeof(User));
+
     memset(user->username, 0, MAX_USERNAME_LENGTH);
     memset(user->password, 0, MAX_PASSWORD_LENGTH);
+    memset(user->email, 0, MAX_EMAIL_LENGTH);
+
     username[strlen(username)] = '\0';
     password[strlen(password)] = '\0';
+    email[strlen(email)] = '\0';
+
     strcpy(user->username, username);
     strcpy(user->password, password);
+    strcpy(user->email, email);
 
     // CREATE U <login-token> <display name> <password>
-    sprintf(chat->input, "CREATE U %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
+    sprintf(chat->input, "CREATE U %.*s %.*s %.*s", MAX_USERNAME_LENGTH, username,
+            MAX_PASSWORD_LENGTH, password, MAX_EMAIL_LENGTH, email);
     write(*chat->communicate_to_client, chat->input, strlen(chat->input));
 
     int valid = validate_new_user_credentials(user);
-    if (valid == 1){
+    if (valid == 1) {
         run(chat, user);
     }
     refresh();
@@ -345,7 +364,7 @@ void show_signup_menu(ChatState *chat) {
 /**
  * this function validates the Users login credentials, it makes use of dummy data for now
  *
- * @param user User to me validated
+ * @param user User to be validated
  * */
 int validate_login_credentials(User *user) {
     int valid = 1, invalid = 0;
@@ -353,21 +372,25 @@ int validate_login_credentials(User *user) {
     const char *valid_username = "test";
     const char *valid_password = "test";
 
-    if (strcmp(user->username, valid_username) == 0 && strcmp(user->password, valid_password) == 0) {
+    bool condition = strcmp(user->username, valid_username) == 0 && strcmp(user->password, valid_password) == 0;
+
+    if (condition) {
         return valid;
     } else
         return invalid;
 }
 
 /**
- * this function validates the Users login credentials, it makes use of dummy data for now
+ * this function validates a new Users credentials
  *
  * @param user User to me validated
  * */
 int validate_new_user_credentials(User *user) {
     int valid = 1, invalid = 0;
 
-    if (strlen(user->username) > 0 && strlen(user->password) > 0) {
+    bool condition = strlen(user->username) > 0 && strlen(user->password) > 0 && strlen(user->email) > 0;
+
+    if (condition) {
         return valid;
     } else
         return invalid;
@@ -377,13 +400,15 @@ int validate_new_user_credentials(User *user) {
  * this function prints the messages on the chat window
  *
  * @param chat ChatState struct
+ * @param user User struct
  * */
 void print_messages(ChatState *chat, User *user) {
     for (int i = 0; i < chat->max_row - 4 && i + chat->scroll_offset < chat->num_messages; ++i) {
-        // print messages with sender indicated
+        // print messages with sender's username and timestamp
         if (chat->messages[i + chat->scroll_offset].sender == 0) {
             mvprintw(i + 1, 0, "[%s] %s: %s",
-                     chat->messages[i + chat->scroll_offset].timestamp, user->username, chat->messages[i + chat->scroll_offset].text);
+                     chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                     chat->messages[i + chat->scroll_offset].text);
         } else {
             mvprintw(i + 1, 0, "[%s] Goofy: %s",
                      chat->messages[i + chat->scroll_offset].timestamp, chat->messages[i + chat->scroll_offset].text);
