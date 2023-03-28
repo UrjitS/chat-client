@@ -86,6 +86,8 @@ void handle_create(struct server_options * options, struct request * request) {
         clear_debug_file_buffer(options->debug_log_file);
         send_create_channel(options->env, options->err, options->socket_fd,request->data);
     } else if (dc_strcmp(options->env, "M", request->obj) == 0) {
+
+
         send_create_message(options->env, options->err, options->socket_fd,request->data);
     } else if (dc_strcmp(options->env, "A", request->obj) == 0) {
         dc_strtok(options->env, request->data, " ");

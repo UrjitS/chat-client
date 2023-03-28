@@ -65,6 +65,7 @@ void handle_create_user_response(struct server_options * options, struct binary_
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         fprintf(options->debug_log_file, "Fields are invalid\n");
@@ -87,6 +88,7 @@ void handle_create_auth_response(struct server_options * options, struct binary_
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
@@ -131,6 +133,8 @@ void handle_create_channel_response(struct server_options * options, struct bina
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
+
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
         fprintf(options->debug_log_file, "Fields are invalid\n");

@@ -25,7 +25,6 @@ void * handle_server(void * arg);
 
 int main(int argc, char *argv[])
 {
-    // TODO Fix hard code port
     FILE * debug_log_file;
     struct dc_env *env;
     struct dc_error *err;
@@ -79,8 +78,8 @@ int main(int argc, char *argv[])
 
         struct server_options options = {env, err, debug_log_file, socket_fd};
 
-//        char * request = dc_strdup(env, err, "CREATE U a@gmail wumbo 1234");
-//        char * request2 = dc_strdup(env, err, "CREATE A wumbo 1234");
+//        char * request = dc_strdup(env, err, "CREATE U a@gmail wumbo pass1234");
+//        char * request2 = dc_strdup(env, err, "CREATE A wumbo pass1234");
 //
 //        struct request *  request_obj = get_type_and_object(&options, request);
 //        handle_ui_request(&options, request_obj);
@@ -90,19 +89,20 @@ int main(int argc, char *argv[])
 //        free(request2);
 //        free(request);
 //        free(request_obj);
-//         Create two threads, one for reading from stdin and one for reading from socket
-        pthread_t read_thread, write_thread;
+//      Create two threads, one for reading from stdin and one for reading from socket
+        pthread_t ui_thread, server_thread;
 
-        pthread_create(&read_thread, NULL, handle_ui, &options);
-        pthread_create(&write_thread, NULL, handle_server, &options);
+        pthread_create(&ui_thread, NULL, handle_ui, &options);
+        pthread_create(&server_thread, NULL, handle_server, &options);
 
-        pthread_join(read_thread, NULL);
-        pthread_join(write_thread, NULL);
+        pthread_join(ui_thread, NULL);
+        pthread_join(server_thread, NULL);
     } else {
         write(STDOUT_FILENO, "Server Failed to Connect\n", dc_strlen(env, "Server Failed to Connect\n"));
     }
 
     free(env);
+    dc_error_reset(err);
     free(err);
     close(socket_fd);
     fclose(debug_log_file);
@@ -153,6 +153,9 @@ void * handle_server(void * arg)
             fprintf(options->debug_log_file, "Failed to read header from server.\n"); // Write a string to the file
             clear_debug_file_buffer(options->debug_log_file);
             exit(EXIT_FAILURE); // NOLINT(concurrency-mt-unsafe)
+        } else if (n == 0) {
+            fprintf(options->debug_log_file, "Server closed connection.\n"); // Write a string to the file
+            clear_debug_file_buffer(options->debug_log_file);
         }
 
         struct binary_header_field * binaryHeaderField = deserialize_header(header);

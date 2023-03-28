@@ -61,7 +61,6 @@ struct server_options{
  * @param header Binary header struct
  * @param data
  */
-void display_header(struct binary_header_field * header, const char * data);
 struct binary_header_field * deserialize_header(uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body);

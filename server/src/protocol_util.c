@@ -25,7 +25,7 @@ struct binary_header_field * deserialize_header(uint32_t value) {
     header->type = (value >> 24) & 0x0F;
     header->object = (value >> 16) & 0xFF;
     header->body_size = value & 0xFFFF;
-    header->body_size = ntohs(header->body_size);
+    header->body_size = header->body_size;
     return header;
 }
 
