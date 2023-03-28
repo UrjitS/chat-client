@@ -19,6 +19,7 @@ void display_header(struct binary_header_field * header, const char * data)
 
 struct binary_header_field * deserialize_header(uint32_t value) {
     struct binary_header_field * header;
+    value = ntohl(value);
     header = malloc(sizeof(struct binary_header_field));
     header->version = (value >> 28) & 0x0F;
     header->type = (value >> 24) & 0x0F;
@@ -35,8 +36,9 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 
 
     uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) |
-                      ((header->object & 0xFF) << 16) | ((htons(header->body_size)) & 0xFFFF);
+                      ((header->object & 0xFF) << 16) | ((header->body_size) & 0xFFFF);
 
+    packet = htonl(packet);
     // Copy the packet into the data buffer
     dc_memcpy(env, data, &packet, sizeof(uint32_t));
 

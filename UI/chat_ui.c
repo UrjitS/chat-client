@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <dlfcn.h>
+#include <netinet/in.h>
+#include <stdbool.h>
 
 // max number of messages in chat history
 #define MAX_MESSAGES 100
@@ -40,8 +43,8 @@ typedef struct {
     int input_col;
     int input_length;
     int message_bar_row;
-    int *communicate_to_client;
-    int *client_to_ui;
+    int communicate_to_client;
+    int client_to_ui;
 } ChatState;
 
 void values_init(ChatState *chat);
@@ -69,15 +72,22 @@ int validate_login_credentials(User *user);
 int validate_new_user_credentials(User *user);
 
 int main(int argc, char *argv[]) {
+    bool has_port = false;
+
     int communicate_to_client[2];
     int client_to_ui[2];
     ChatState *chatState = malloc(sizeof(ChatState));
 
     // check if server ip is provided
     if (argc < 2 || inet_addr(argv[1]) == (in_addr_t) (-1)) {
-        printf("Usage: %s <server_ip>\n", argv[0]);
+        printf("Usage: %s <server_ip> [port]\n", argv[0]);
         return EXIT_FAILURE;
     }
+
+    if (argc == 3) {
+        has_port = true;
+    }
+
     // Create pipe
     if (pipe(communicate_to_client) == -1) {
         fprintf(stderr, "UI Pipe failed");
@@ -102,9 +112,13 @@ int main(int argc, char *argv[]) {
         close(client_to_ui[1]);  // close the writing end of the pipe
 
         // Open server in background
-        char *args[] = {"./scalable_server", argv[1], NULL};
-
-        execvp(args[0], args);
+        if (has_port) {
+            char * args[] = {"./scalable_server", argv[1], argv[2], NULL};
+            execvp(args[0], args);
+        } else {
+            char * args[] = {"./scalable_server", argv[1], NULL};
+            execvp(args[0], args);
+        }
 
     } else {
         // parent process
@@ -112,20 +126,29 @@ int main(int argc, char *argv[]) {
         close(communicate_to_client[0]);  // close the read end of the pipe
         close(client_to_ui[1]);  // close the writing end of the pipe
 
-        chatState->communicate_to_client = &communicate_to_client[1];
-        chatState->client_to_ui = &client_to_ui[0];
+        chatState->communicate_to_client = communicate_to_client[1];
+        chatState->client_to_ui = client_to_ui[0];
 
-        values_init(chatState);
-        show_menu(chatState);
-        endwin();
+        char input_str[MAX_MESSAGE_LENGTH];
+        read(chatState->client_to_ui, input_str, MAX_MESSAGE_LENGTH);
+        input_str[strlen(input_str) - 1] = '\0';
 
-        // Wait for child process to finish
-        wait(NULL);
-        // Close all pipes and exit
-        close(communicate_to_client[1]);  // close the pipe
-        close(client_to_ui[0]);  // close the pipe
-        free(chatState);
-        return EXIT_SUCCESS;
+        if (strcmp(input_str, "Server Running") == 0) {
+            values_init(chatState);
+            show_menu(chatState);
+            endwin();
+
+            // Wait for child process to finish
+            wait(NULL);
+            // Close all pipes and exit
+            close(communicate_to_client[1]);  // close the pipe
+            close(client_to_ui[0]);  // close the pipe
+            free(chatState);
+            return EXIT_SUCCESS;
+        } else {
+            printf("Server could not connect\n");
+            return EXIT_FAILURE;
+        }
     }
 }
 
@@ -277,13 +300,28 @@ void show_login_menu(ChatState *chat) {
     strcpy(user->username, username);
     strcpy(user->password, password);
 
-    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
-    write(*chat->communicate_to_client, chat->input, strlen(chat->input));
-
-    int valid = validate_login_credentials(user);
-    if (valid == 1) {
-        run(chat, user);
+    // Make sure values are not empty or only spaces before sending to server
+    if (strlen(user->username) == 0 || strlen(user->password) == 0) {
+        show_login_menu(chat);
     }
+    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
+    write(chat->communicate_to_client, chat->input, strlen(chat->input));
+    // Read from client and check response
+
+    char response[100];
+    ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+    response[read_number] = '\0';
+
+    if (strcmp(response, "OK") == 0) {
+        run(chat, user);
+    } else {
+        // TODO display error message and allow for re-entry rather than reloading the menu
+        show_login_menu(chat);
+    }
+//    int valid = validate_login_credentials(user);
+//    if (valid == 1) {
+//        run(chat, user);
+//    }
     refresh();
 }
 
@@ -348,11 +386,26 @@ void show_signup_menu(ChatState *chat) {
     strcpy(user->username, username);
     strcpy(user->password, password);
     strcpy(user->email, email);
-
+    // validate the inputs before sending
     // CREATE U <login-token> <display name> <password>
-    sprintf(chat->input, "CREATE U %.*s %.*s %.*s", MAX_USERNAME_LENGTH, username,
-            MAX_PASSWORD_LENGTH, password, MAX_EMAIL_LENGTH, email);
-    write(*chat->communicate_to_client, chat->input, strlen(chat->input));
+    if (strlen(user->username) == 0 || strlen(user->password) == 0 || strlen(user->email) == 0) {
+        show_signup_menu(chat);
+    }
+
+    sprintf(chat->input, "CREATE U %s %s %s", email, username, password);
+    write(chat->communicate_to_client, chat->input, strlen(chat->input));
+
+    // Read from client and check response
+    char response[100];
+    ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+    response[read_number] = '\0';
+
+    if (strcmp(response, "OK") == 0) {
+        show_login_menu(chat);
+    } else {
+        // TODO display error message and allow for re-entry rather than reloading the menu
+        show_signup_menu(chat);
+    }
 
     int valid = validate_new_user_credentials(user);
     if (valid == 1) {

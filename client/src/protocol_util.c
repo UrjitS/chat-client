@@ -20,13 +20,14 @@ void display_header(struct binary_header_field * header, const char * data)
 
 struct binary_header_field * deserialize_header(uint32_t value) {
     struct binary_header_field * header;
+    value = ntohl(value);
     header = malloc(sizeof(struct binary_header_field));
     header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     header->object = (value >> 16) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     header->body_size = value & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
-    header->body_size = ntohs(header->body_size);
+//    header->body_size = ntohs(header->body_size);
 
     return header;
 }
@@ -38,8 +39,8 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 
 
     // Create the packet
-    uint32_t packet = ((header->version & 0xF) << 28) | ((header->type & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-                      ((header->object & 0xFF) << 16) | (header->body_size & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    uint32_t packet = (((((uint32_t)header->version) & 0xF) << 28)) | ((((uint32_t)header->type) & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+                      ((((uint32_t)header->object) & 0xFF) << 16) | (((uint32_t)header->body_size) & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
     // Convert to network byte order.
     packet = htonl(packet);
@@ -51,6 +52,12 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
     dc_memcpy(env, data + sizeof(uint32_t), body, dc_strlen(env, body));
 
     dc_write(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
+}
+
+void clear_debug_file_buffer(FILE * debug_log_file)
+{
+    fflush(debug_log_file);
+    setbuf(debug_log_file, NULL);
 }
 
 /**
