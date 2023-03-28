@@ -14,8 +14,12 @@ set(INCLUDE_DIR ./client/include)
 
 set(SOURCE_LIST ${SOURCE_DIR}/main.c
         ${SOURCE_DIR}/protocol_util.c
+        ${SOURCE_DIR}/handle_ui.c
+        ${SOURCE_DIR}/handle_server.c
                 )
 set(HEADER_LIST ${INCLUDE_DIR}/protocol_util.h
+        ${INCLUDE_DIR}/handle_ui.h
+        ${INCLUDE_DIR}/handle_server.h
                 )
 
 add_executable(chat_client
@@ -181,7 +185,7 @@ target_link_libraries(scalable_server PUBLIC ${LIBDC_UTIL})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_FSM})
 target_link_libraries(scalable_server PUBLIC ${LIB_CONFIG})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_APPLICATION})
-target_link_libraries(scalable_server PRIVATE -lbsd)
+#target_link_libraries(scalable_server PRIVATE -lbsd)
 
 
 set_target_properties(scalable_server PROPERTIES
