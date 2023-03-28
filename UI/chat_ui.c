@@ -35,6 +35,7 @@ typedef struct {
     Message messages[MAX_MESSAGES];
     char input_buffer[MAX_MESSAGE_LENGTH];
     char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + MAX_EMAIL_LENGTH + 9];
+    char * channels;
     int num_messages;
     int scroll_offset;
     int max_row;
@@ -191,6 +192,7 @@ void init_ncurses() {
  * */
 void print_sections(ChatState *chat) {
     mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
+    // TODO print the chat.channels string
     mvprintw(chat->input_row, chat->input_col, "Type a message and press 'ENTER' to send: %s", chat->input_buffer);
 }
 
@@ -205,7 +207,16 @@ _Noreturn void run(ChatState *chat, User *user) {
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
+    // TODO if the entered string contains a "/" then it is a command (i.e. join channel, leave channel)
+    // If not then it is a message to be sent to the server
+    // Send message to server in the format:
+    // CREATE M <display-name> <channel-name> <message-content>
 
+    // TODO for now implement join channel as well as messages, user types "/join <channel-name> <publicity> [password]"
+    // Send message to server in the format:
+    // CREATE C <channel-name> <display-name> <publicity> [password]
+    // if publicity is private then password is required
+    // publicity is 0 or 1
     while (1) {
         // handles window resizes
         resize_handler(chat);
@@ -312,7 +323,12 @@ void show_login_menu(ChatState *chat) {
     ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
     response[read_number] = '\0';
 
+    // OK GLOBAL, Channel1\0
+    // TODO check if the response is OK
     if (strcmp(response, "OK") == 0) {
+        // parse the channels list and save + display it in the run chat function
+        // strtok with space
+        chat->channels = strtok(response, " ");
         run(chat, user);
     } else {
         // prints the servers response on the GUI

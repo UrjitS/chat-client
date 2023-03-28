@@ -251,7 +251,7 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
             printf("Read from client\n");
             dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
 
-            char message[] = "400\n";
+            char message[] = "201\n";
             send_create_user(env, err, client_sockets[i], message);
 //            send_create_channel(env, err, client_sockets[i], message);
 //            send_create_message(env, err, client_sockets[i], message);

@@ -65,7 +65,8 @@ void handle_create_user_response(struct server_options * options, struct binary_
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
+    fprintf(options->debug_log_file, "RP %s\n", response_code);
+    clear_debug_file_buffer(options->debug_log_file);
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         fprintf(options->debug_log_file, "Fields are invalid\n");
@@ -100,7 +101,7 @@ void handle_create_auth_response(struct server_options * options, struct binary_
         fprintf(options->debug_log_file, "User account not found\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "User account not found\n", dc_strlen(options->env, "User account not found\n"));
-    } else if (dc_strcmp(options->env, response_code, "200"))
+    } else if (dc_strcmp(options->env, response_code, "201"))
     {
         char buffer[1024];
         // “200” ETX display-name ETX privilege-level ETX channel-name-list
@@ -115,6 +116,7 @@ void handle_create_auth_response(struct server_options * options, struct binary_
         clear_debug_file_buffer(options->debug_log_file);
 
         uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
+        dc_strcpy(options->env, buffer, "OK\3");
         dc_strcpy(options->env, buffer, channel_name_list_size);
         dc_strcat(options->env, buffer, "\3");
         for (int i = 0; i < channel_size; i++)
@@ -123,6 +125,7 @@ void handle_create_auth_response(struct server_options * options, struct binary_
         }
         dc_strcat(options->env, buffer, "\3");
         dc_strcat(options->env, buffer, "\0");
+//         OK 1 GLOBA\0
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
     }
 }
@@ -194,4 +197,3 @@ void handle_server_update(struct server_options * options, struct binary_header_
 void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
 
 }
-

@@ -9,12 +9,6 @@
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
 
-enum Codes {
-    INVALID_REQUEST = 400,
-    NON_UNIQUE_FIELDS = 409,
-    CREATED = 201,
-};
-
 enum Type {
     CREATE = 0x1,
     READ = 0x2,
@@ -35,11 +29,6 @@ struct binary_header_field {
     unsigned int type : 4; // 4 bit type number
     uint8_t object; // 8 bit object type
     uint16_t body_size; // 16 bit body size
-};
-
-struct response {
-    int code;
-    char * message;
 };
 
 struct request{
