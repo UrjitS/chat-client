@@ -113,10 +113,10 @@ int main(int argc, char *argv[]) {
 
         // Open server in background
         if (has_port) {
-            char * args[] = {"./scalable_server", argv[1], argv[2], NULL};
+            char *args[] = {"./scalable_server", argv[1], argv[2], NULL};
             execvp(args[0], args);
         } else {
-            char * args[] = {"./scalable_server", argv[1], NULL};
+            char *args[] = {"./scalable_server", argv[1], NULL};
             execvp(args[0], args);
         }
 
@@ -315,13 +315,10 @@ void show_login_menu(ChatState *chat) {
     if (strcmp(response, "OK") == 0) {
         run(chat, user);
     } else {
-        // TODO display error message and allow for re-entry rather than reloading the menu
-        show_login_menu(chat);
+        // prints the servers response on the GUI
+        mvprintw(0, title_col, "Server response: %s", response);
+        mvprintw(1, title_col, "Hit ENTER key to restart");
     }
-//    int valid = validate_login_credentials(user);
-//    if (valid == 1) {
-//        run(chat, user);
-//    }
     refresh();
 }
 
@@ -403,13 +400,9 @@ void show_signup_menu(ChatState *chat) {
     if (strcmp(response, "OK") == 0) {
         show_login_menu(chat);
     } else {
-        // TODO display error message and allow for re-entry rather than reloading the menu
-        show_signup_menu(chat);
-    }
-
-    int valid = validate_new_user_credentials(user);
-    if (valid == 1) {
-        run(chat, user);
+        // prints the servers response on the GUI
+        mvprintw(0, title_col, "Server response: %s", response);
+        mvprintw(1, title_col, "Hit ENTER key to restart");
     }
     refresh();
 }
