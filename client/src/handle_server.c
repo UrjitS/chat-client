@@ -89,7 +89,6 @@ void handle_create_auth_response(struct server_options * options, struct binary_
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
@@ -109,23 +108,27 @@ void handle_create_auth_response(struct server_options * options, struct binary_
         char * privilege_level = dc_strtok(options->env, NULL, "\3");
         char * channel_name_list_size = dc_strtok(options->env, NULL, "\3");
 
-        fprintf(options->debug_log_file, "CREATE USER SUCCESS\n");
+        fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
         fprintf(options->debug_log_file, "DisplayName: %s\n", display_name);
         fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
         fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
         clear_debug_file_buffer(options->debug_log_file);
 
+        // OK GLOBAL, Channel1\0
         uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
-        dc_strcpy(options->env, buffer, "OK\3");
-        dc_strcpy(options->env, buffer, channel_name_list_size);
-        dc_strcat(options->env, buffer, "\3");
+        dc_strcpy(options->env, buffer, "OK ");
+
         for (int i = 0; i < channel_size; i++)
         {
             dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+            dc_strcat(options->env, buffer, " ");
         }
-        dc_strcat(options->env, buffer, "\3");
+//        dc_strcat(options->env, buffer, "GLOBAL_Test");
+
         dc_strcat(options->env, buffer, "\0");
-//         OK 1 GLOBA\0
+        fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
+        clear_debug_file_buffer(options->debug_log_file);
+
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
     }
 }
@@ -136,7 +139,6 @@ void handle_create_channel_response(struct server_options * options, struct bina
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {

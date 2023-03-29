@@ -148,7 +148,8 @@ void * handle_server(void * arg)
         ssize_t n;
 
         // receive header from server
-        n = read(options->socket_fd, &header, sizeof(header));
+        n = dc_read_fully(options->env, options->err, options->socket_fd, &header, sizeof(header));
+
         if (n < 0) {
             fprintf(options->debug_log_file, "Failed to read header from server.\n"); // Write a string to the file
             clear_debug_file_buffer(options->debug_log_file);

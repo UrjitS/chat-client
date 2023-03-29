@@ -24,6 +24,7 @@
 #define POLL_TIMEOUT (-1)
 #define BUFFER_SIZE 1024
 
+int flow = 0;
 
 static void ctrl_c_handler(__attribute__((unused)) int signum);
 static int setup_server(struct dc_env *env, struct dc_error *err);
@@ -251,11 +252,27 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
             printf("Read from client\n");
             dc_write(env, err, STDOUT_FILENO, buffer, bytes_read);
 
-            char message[] = "201\n";
-            send_create_user(env, err, client_sockets[i], message);
+            if (flow == 0) {
+                char message[] = "200\3";
+                send_create_user(env, err, client_sockets[i], message);
+                flow++;
+            } else {
+                char message[1024];
+                dc_strcpy(env, message, "200");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "Wumbo");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "0");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "1");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "GLOBAL_TEST");
+                dc_strcat(env, message, "\3");
+                send_create_auth(env, err, client_sockets[i], message);
+                flow--;
+            }
 //            send_create_channel(env, err, client_sockets[i], message);
 //            send_create_message(env, err, client_sockets[i], message);
-//            send_create_auth(env, err, client_sockets[i], message);
         }
     }
 }
