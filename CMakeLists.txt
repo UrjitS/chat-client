@@ -185,7 +185,7 @@ target_link_libraries(scalable_server PUBLIC ${LIBDC_UTIL})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_FSM})
 target_link_libraries(scalable_server PUBLIC ${LIB_CONFIG})
 target_link_libraries(scalable_server PUBLIC ${LIBDC_APPLICATION})
-#target_link_libraries(scalable_server PRIVATE -lbsd)
+target_link_libraries(scalable_server PRIVATE -lbsd)
 
 
 set_target_properties(scalable_server PROPERTIES

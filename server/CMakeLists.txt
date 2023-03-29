@@ -390,4 +390,4 @@ find_path(ENV_INCLUDE_DIR dc_env/env.h)
 include_directories(${ENV_INCLUDE_DIR})
 
 add_executable_target(chat-server PROCESS_SERVER_SOURCE_LIST PROCESS_SERVER_SOURCE_MAIN PROCESS_SERVER_HEADER_LIST PROCESS_SERVER_REQUIRED_LIBRARIES_LIST "" "")
-#target_link_libraries(chat-server PRIVATE -lbsd)
+target_link_libraries(chat-server PRIVATE -lbsd)

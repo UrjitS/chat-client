@@ -10,14 +10,12 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
-// max number of messages in chat history
 #define MAX_MESSAGES 100
-// max length of each message
 #define MAX_MESSAGE_LENGTH 256
-// max length for username and password
 #define MAX_USERNAME_LENGTH 20
 #define MAX_PASSWORD_LENGTH 20
 #define MAX_EMAIL_LENGTH 50
+#define RESPONSE_BUFFER 100
 
 typedef struct {
     char username[MAX_USERNAME_LENGTH];
@@ -65,6 +63,8 @@ void get_user_input(ChatState *chat);
 void resize_handler(ChatState *chat);
 
 void show_menu(ChatState *chat);
+
+void create_channel(ChatState *chat);
 
 _Noreturn void run(ChatState *chat, User *user);
 
@@ -178,7 +178,7 @@ void values_init(ChatState *chat) {
 /**
  * initialize ncurses
  * */
-void init_ncurses() {
+void init_ncurses(void) {
     initscr();
     cbreak();
     noecho();
@@ -193,6 +193,7 @@ void init_ncurses() {
 void print_sections(ChatState *chat) {
     mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
     // TODO print the chat.channels string
+    mvprintw(chat->message_bar_row - 1, chat->input_col, "Channel name: %s", chat->channels);
     mvprintw(chat->input_row, chat->input_col, "Type a message and press 'ENTER' to send: %s", chat->input_buffer);
 }
 
@@ -260,82 +261,6 @@ void show_menu(ChatState *chat) {
             is_login = !is_login;
         }
     }
-}
-
-
-/**
- * this displays the contents of the login menu, prompts the user for their username and password
- *
- * @param chat ChatState struct
- * */
-void show_login_menu(ChatState *chat) {
-    clear();
-    // Define variables for menu positions
-    int title_row, title_col, username_row, username_col, password_row, password_col;
-
-    // Adjust positions based on terminal size
-    getmaxyx(stdscr, title_row, title_col);
-    title_row /= 3;
-    title_col = (title_col - strlen("*** Login ***")) / 2;
-    username_row = title_row + 2;
-    username_col = (title_col - strlen("Enter your username: ")) / 2;
-    password_row = username_row + 1;
-    password_col = (title_col - strlen("Enter your password: ")) / 2;
-
-    // Print menu with adjusted positions
-    mvprintw(title_row, title_col, "*** Login ***");
-    mvprintw(username_row, username_col, "Enter your username: ");
-    move(username_row, username_col + strlen("Enter your username: "));
-
-    // Read username input and display it on the screen
-    char username[MAX_USERNAME_LENGTH];
-    getstr(username);
-    mvprintw(username_row, username_col + strlen("Enter your username: "), "%s", username);
-
-    mvprintw(password_row, password_col, "Enter your password: ");
-    move(password_row, password_col + strlen("Enter your password: "));
-
-    // Read password input and display asterisks instead of the actual characters
-    char password[MAX_PASSWORD_LENGTH];
-    getstr(password);
-    mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
-
-    User *user = malloc(sizeof(User));
-
-    memset(user->username, 0, MAX_USERNAME_LENGTH);
-    memset(user->password, 0, MAX_PASSWORD_LENGTH);
-
-    username[strlen(username)] = '\0';
-    password[strlen(password)] = '\0';
-
-    strcpy(user->username, username);
-    strcpy(user->password, password);
-
-    // Make sure values are not empty or only spaces before sending to server
-    if (strlen(user->username) == 0 || strlen(user->password) == 0) {
-        show_login_menu(chat);
-    }
-    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
-    write(chat->communicate_to_client, chat->input, strlen(chat->input));
-    // Read from client and check response
-
-    char response[100];
-    ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
-    response[read_number] = '\0';
-
-    // OK GLOBAL, Channel1\0
-    // TODO check if the response is OK
-    if (strcmp(response, "OK") == 0) {
-        // parse the channels list and save + display it in the run chat function
-        // strtok with space
-        chat->channels = strtok(response, " ");
-        run(chat, user);
-    } else {
-        // prints the servers response on the GUI
-        mvprintw(0, title_col, "Server response: %s", response);
-        mvprintw(1, title_col, "Hit ENTER key to restart");
-    }
-    refresh();
 }
 
 /**
@@ -409,12 +334,85 @@ void show_signup_menu(ChatState *chat) {
     write(chat->communicate_to_client, chat->input, strlen(chat->input));
 
     // Read from client and check response
-    char response[100];
+    char response[RESPONSE_BUFFER];
     ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
     response[read_number] = '\0';
 
     if (strcmp(response, "OK") == 0) {
         show_login_menu(chat);
+    } else {
+        // prints the servers response on the GUI
+        mvprintw(0, title_col, "Server response: %s", response);
+        mvprintw(1, title_col, "Hit ENTER key to restart");
+    }
+    refresh();
+}
+
+/**
+ * this displays the contents of the login menu, prompts the user for their username and password
+ *
+ * @param chat ChatState struct
+ * */
+void show_login_menu(ChatState *chat) {
+    clear();
+    // Define variables for menu positions
+    int title_row, title_col, username_row, username_col, password_row, password_col;
+
+    // Adjust positions based on terminal size
+    getmaxyx(stdscr, title_row, title_col);
+    title_row /= 3;
+    title_col = (title_col - strlen("*** Login ***")) / 2;
+    username_row = title_row + 2;
+    username_col = (title_col - strlen("Enter your username: ")) / 2;
+    password_row = username_row + 1;
+    password_col = (title_col - strlen("Enter your password: ")) / 2;
+
+    // Print menu with adjusted positions
+    mvprintw(title_row, title_col, "*** Login ***");
+    mvprintw(username_row, username_col, "Enter your username: ");
+    move(username_row, username_col + strlen("Enter your username: "));
+
+    // Read username input and display it on the screen
+    char username[MAX_USERNAME_LENGTH];
+    getstr(username);
+    mvprintw(username_row, username_col + strlen("Enter your username: "), "%s", username);
+
+    mvprintw(password_row, password_col, "Enter your password: ");
+    move(password_row, password_col + strlen("Enter your password: "));
+
+    // Read password input and display asterisks instead of the actual characters
+    char password[MAX_PASSWORD_LENGTH];
+    getstr(password);
+    mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
+
+    User *user = malloc(sizeof(User));
+
+    memset(user->username, 0, MAX_USERNAME_LENGTH);
+    memset(user->password, 0, MAX_PASSWORD_LENGTH);
+
+    username[strlen(username)] = '\0';
+    password[strlen(password)] = '\0';
+
+    strcpy(user->username, username);
+    strcpy(user->password, password);
+
+    // Make sure values are not empty or only spaces before sending to server
+    if (strlen(user->username) == 0 || strlen(user->password) == 0) {
+        show_login_menu(chat);
+    }
+    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
+    write(chat->communicate_to_client, chat->input, strlen(chat->input));
+    // Read from client and check response
+
+    char response[RESPONSE_BUFFER];
+    ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+    response[read_number] = '\0';
+
+    char * resp_code = strtok(response, " ");
+
+    if (strcmp(resp_code, "OK") == 0) {
+        chat->channels = strtok(NULL, "\0");
+        run(chat, user);
     } else {
         // prints the servers response on the GUI
         mvprintw(0, title_col, "Server response: %s", response);
