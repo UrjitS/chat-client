@@ -210,7 +210,7 @@ _Noreturn void run(ChatState *chat, User *user) {
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
-    // TODO if the entered string contains a "/" then it is a command (i.e. join channel, leave channel)
+    // TODO if the entered string contains a "/" then it is a command (i.e. join/create channel, leave channel)
     // If not then it is a message to be sent to the server
     // Send message to server in the format:
     // CREATE M <display-name> <channel-name> <message-content>
@@ -462,18 +462,20 @@ int validate_new_user_credentials(User *user) {
 void print_messages(ChatState *chat, User *user) {
     for (int i = 0; i < chat->max_row - 4 && i + chat->scroll_offset < chat->num_messages; ++i) {
         char *slash = strchr(chat->messages[i + chat->scroll_offset].text, '/');
-        char join_msg[MAX_MESSAGE_LENGTH];
-        if (slash != NULL) {
+        if (slash != NULL)
+        {
+            char join_msg[MAX_MESSAGE_LENGTH];
             char *command = strtok(slash, " ");
             char *channel_name = strtok(NULL, " ");
             char *channel_publicity = strtok(NULL, " ");
             char *channel_password = strtok(NULL, " ");
 
-            // check if the command is "/join"
-            if (strcmp(command, "/join") == 0) {
+            // check if the command is "/create" to create a channel
+            if (strcmp(command, "/create") == 0) {
                 // parse the publicity parameter
                 if (channel_publicity != NULL) {
-                    if (strcmp(channel_publicity, "0") == 0) {
+                    if (strcmp(channel_publicity, "0") == 0)
+                    {
                         // send the join channel message to the server
                         snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s %s", channel_name,
                                  user->username, channel_publicity, channel_password);
@@ -487,10 +489,17 @@ void print_messages(ChatState *chat, User *user) {
 
                         if (strcmp(resp_code, "OK") != 0) {
                             // prints the servers response on the GUI
-                            mvprintw(0, 100, "Server response: %s", response);
-                            mvprintw(1, 100, "Hit ENTER key to restart");
+                            mvprintw(i + 1, 0, "[%s] %s: %s",
+                                     chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                                     "Created Channel");
+                        } else
+                        {
+                            mvprintw(i + 1, 0, "[%s] %s: %s",
+                                     chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                                     response);
                         }
-                    } else {
+                    } else
+                    {
                         snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s", channel_name,
                                  user->username, channel_publicity);
                         write(chat->communicate_to_client, join_msg, strlen(join_msg));
@@ -500,24 +509,32 @@ void print_messages(ChatState *chat, User *user) {
                         response[read_number] = '\0';
                         char *resp_code = strtok(response, " ");
 
-                        if (strcmp(resp_code, "OK") != 0) {
+                        if (strcmp(resp_code, "OK") != 0)
+                        {
                             // prints the servers response on the GUI
-                            mvprintw(0, 100, "Server response: %s", response);
-                            mvprintw(1, 100, "Hit ENTER key to restart");
+                            mvprintw(i + 1, 0, "[%s] %s: %s",
+                                     chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                                     "Created Channel");
+                        } else
+                        {
+                            mvprintw(i + 1, 0, "[%s] %s: %s",
+                                     chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                                     response);
                         }
                     }
                 }
+            }
+
+        } else {
+            // print messages with sender's username and timestamp
+            if (chat->messages[i + chat->scroll_offset].sender == 0) {
+                mvprintw(i + 1, 0, "[%s] %s: %s",
+                         chat->messages[i + chat->scroll_offset].timestamp, user->username,
+                         chat->messages[i + chat->scroll_offset].text);
             } else {
-                // print messages with sender's username and timestamp
-                if (chat->messages[i + chat->scroll_offset].sender == 0) {
-                    mvprintw(i + 1, 0, "[%s] %s: %s",
-                             chat->messages[i + chat->scroll_offset].timestamp, user->username,
-                             chat->messages[i + chat->scroll_offset].text);
-                } else {
-                    mvprintw(i + 1, 0, "[%s] Goofy: %s",
-                             chat->messages[i + chat->scroll_offset].timestamp,
-                             chat->messages[i + chat->scroll_offset].text);
-                }
+                mvprintw(i + 1, 0, "[%s] Goofy: %s",
+                         chat->messages[i + chat->scroll_offset].timestamp,
+                         chat->messages[i + chat->scroll_offset].text);
             }
         }
     }
