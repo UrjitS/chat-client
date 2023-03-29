@@ -191,9 +191,8 @@ void init_ncurses(void) {
  * @param chat ChatState struct
  * */
 void print_sections(ChatState *chat) {
-    mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
-    // TODO print the chat.channels string
     mvprintw(chat->message_bar_row - 1, chat->input_col, "Channel name: %s", chat->channels);
+    mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
     mvprintw(chat->input_row, chat->input_col, "Type a message and press 'ENTER' to send: %s", chat->input_buffer);
 }
 
