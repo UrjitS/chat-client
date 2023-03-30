@@ -33,7 +33,8 @@ typedef struct {
     Message messages[MAX_MESSAGES];
     char input_buffer[MAX_MESSAGE_LENGTH];
     char input[MAX_USERNAME_LENGTH + MAX_PASSWORD_LENGTH + MAX_EMAIL_LENGTH + 9];
-    char *channels;
+    char *available_channel;
+    char *current_channel;
     char *command;
     char *channel_password;
     char *channel_publicity;
@@ -170,7 +171,7 @@ void values_init(ChatState *chat) {
     chat->scroll_offset = 0;
     // length of user input
     chat->input_length = 0;
-
+    chat->current_channel = "Not in one";
     init_ncurses();
 
     // get maximum row and column dimensions of terminal window
@@ -196,8 +197,8 @@ void init_ncurses(void) {
  * @param chat ChatState struct
  * */
 void print_sections(ChatState *chat) {
-    mvprintw(chat->message_bar_row - 1, chat->input_col, "Channel name: %s", chat->channels);
-    mvprintw(chat->message_bar_row, chat->input_col, "Welcome to the chat! :) ");
+    mvprintw(chat->message_bar_row - 1, chat->input_col, "Available Channels: %s", chat->available_channel);
+    mvprintw(chat->message_bar_row, chat->input_col, "Current Channel: %s", chat->current_channel);
     mvprintw(chat->input_row, chat->input_col, "Type a message and press 'ENTER' to send: %s", chat->input_buffer);
 }
 
@@ -412,7 +413,7 @@ void show_login_menu(ChatState *chat) {
     char *resp_code = strtok(response, " ");
 
     if (strcmp(resp_code, "OK") == 0) {
-        chat->channels = strdup(strtok(NULL, "\0"));
+        chat->available_channel = strdup(strtok(NULL, "\0"));
         run(chat, user);
     } else {
         // prints the servers response on the GUI
@@ -509,8 +510,10 @@ void get_user_input(ChatState *chat, User *user) {
                  sizeof(chat->messages[chat->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
         strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
 
-        handle_create_channel(chat, user, (chat->num_messages),strdup(chat->messages[chat->num_messages].text));
-        handle_join_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
+        if (strlen(chat->messages[chat->num_messages].text) > 0) {
+            handle_create_channel(chat, user, (chat->num_messages),strdup(chat->messages[chat->num_messages].text));
+            handle_join_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
+        }
 
         chat->messages[chat->num_messages].sender = 0;
         chat->num_messages++;
@@ -574,6 +577,12 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
 
                 if (strcmp(resp_code, "OK") == 0) {
                     strncpy(chat->messages[(chat->num_messages)].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
+                    // Add to available channels
+                    char channel_list[1024];
+                    strcpy(channel_list, chat->available_channel);
+                    strcat(channel_list, ", ");
+                    strcat(channel_list, channel_name);
+                    chat->available_channel = strdup(channel_list);
                 } else
                 {
                     strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
@@ -593,6 +602,12 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
                 if (strcmp(resp_code, "OK") == 0)
                 {
                     strncpy(chat->messages[(chat->num_messages )].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
+                    // Add to available channels
+                    char channel_list[1024];
+                    strcpy(channel_list, chat->available_channel);
+                    strcat(channel_list, ", ");
+                    strcat(channel_list, channel_name);
+                    chat->available_channel = strdup(channel_list);
                 } else
                 {
                     strncpy(chat->messages[(chat->num_messages )].text, response, MAX_MESSAGE_LENGTH);
@@ -625,6 +640,7 @@ void handle_join_channel(ChatState *chat, const User *user, int i, char *slash)
             if (strcmp(resp_code, "OK") == 0) {
                 // prints the servers response on the GUI
                 strncpy(chat->messages[(chat->num_messages )].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
+                chat->current_channel = strdup(channel_name);
             } else
             {
                 strncpy(chat->messages[(chat->num_messages )].text, response, MAX_MESSAGE_LENGTH);
