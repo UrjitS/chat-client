@@ -261,7 +261,7 @@ void handle_update_user_response(struct server_options *options, char *body) {
 
 void handle_update_channel_response(struct server_options *options, char *body) {
     // 400 404 403 200
-
+    // JOIN or LEAVE
     fprintf(options->debug_log_file, "HANDLING UPDATE CHANNEL RESP\n");
     clear_debug_file_buffer(options->debug_log_file);
 

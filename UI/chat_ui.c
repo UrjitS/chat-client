@@ -68,9 +68,9 @@ void resize_handler(ChatState *chat);
 
 void show_menu(ChatState *chat);
 
-void handle_create_channel(ChatState *chat, const User *user, int i, char *slash);
-
-void handle_join_channel(ChatState *chat, const User *user, int i, char *slash);
+void handle_create_channel(ChatState *chat, const User *user, char *slash);
+void handle_join_channel(ChatState *chat, const User *user, char *slash);
+void handle_leaving_channel(ChatState *chat, const User *user, char *slash);
 
 _Noreturn void run(ChatState *chat, User *user);
 
@@ -167,7 +167,7 @@ void values_init(ChatState *chat) {
     chat->scroll_offset = 0;
     // length of user input
     chat->input_length = 0;
-    chat->current_channel = "Not in one";
+    chat->current_channel = "N/A";
     init_ncurses();
 
     // get maximum row and column dimensions of terminal window
@@ -473,8 +473,9 @@ void get_user_input(ChatState *chat, User *user) {
         strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
 
         if (strlen(chat->messages[chat->num_messages].text) > 0) {
-            handle_create_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
-            handle_join_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
+            handle_create_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
+            handle_join_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
+            handle_leaving_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
         }
 
         chat->messages[chat->num_messages].sender = 0;
@@ -516,10 +517,10 @@ void get_user_input(ChatState *chat, User *user) {
  *
  * @param chat ChatState struct
  * @param user User struct
- * @param i number of messages in the chat
  * @param slash the token we use to identify a command
  * */
-void handle_create_channel(ChatState *chat, const User *user, int i, char *slash) {
+void handle_create_channel(ChatState *chat, const User *user, char *slash)
+{
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -530,52 +531,28 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
     if (strcmp(command, "/create") == 0) {
         // parse the publicity parameter
         if (channel_publicity != NULL) {
-            if (strcmp(channel_publicity, "0") == 0) {
-                // send the join channel message to the server
-                snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s %s", channel_name,
-                         user->username, channel_publicity, channel_password);
-                write(chat->communicate_to_client, join_msg, strlen(join_msg));
+            snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s", channel_name,
+                     user->username, channel_publicity);
+            write(chat->communicate_to_client, join_msg, strlen(join_msg));
 
-                char response[RESPONSE_BUFFER];
-                ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
-                response[read_number] = '\0';
+            char response[RESPONSE_BUFFER];
+            ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+            response[read_number] = '\0';
 
-                char *resp_code = strtok(strdup(response), "\n");
+            char *resp_code = strtok(strdup(response), "\n");
 
-                if (strcmp(resp_code, "OK") == 0) {
-                    strncpy(chat->messages[(chat->num_messages)].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
-                    // Add to available channels
-                    char channel_list[1024];
-                    strcpy(channel_list, chat->available_channel);
-                    strcat(channel_list, ", ");
-                    strcat(channel_list, channel_name);
-                    chat->available_channel = strdup(channel_list);
-                } else {
-                    strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
-                }
+            if (strcmp(resp_code, "OK") == 0) {
+                strncpy(chat->messages[(chat->num_messages)].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
+                // Add to available channels
+                char channel_list[1024];
+                strcpy(channel_list, chat->available_channel);
+                strcat(channel_list, ", ");
+                strcat(channel_list, channel_name);
+                chat->available_channel = strdup(channel_list);
             } else {
-                snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s", channel_name,
-                         user->username, channel_publicity);
-                write(chat->communicate_to_client, join_msg, strlen(join_msg));
-
-                char response[RESPONSE_BUFFER];
-                ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
-                response[read_number] = '\0';
-
-                char *resp_code = strtok(strdup(response), "\n");
-
-                if (strcmp(resp_code, "OK") == 0) {
-                    strncpy(chat->messages[(chat->num_messages)].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
-                    // Add to available channels
-                    char channel_list[1024];
-                    strcpy(channel_list, chat->available_channel);
-                    strcat(channel_list, ", ");
-                    strcat(channel_list, channel_name);
-                    chat->available_channel = strdup(channel_list);
-                } else {
-                    strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
-                }
+                strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
+
         }
     }
 }
@@ -585,10 +562,10 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
  *
  * @param chat ChatState struct
  * @param user User struct
- * @param i number of messages in the chat
  * @param slash the token we use to identify a command
  * */
-void handle_join_channel(ChatState *chat, const User *user, int i, char *slash) {
+void handle_join_channel(ChatState *chat, const User *user, char *slash)
+{
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -598,7 +575,7 @@ void handle_join_channel(ChatState *chat, const User *user, int i, char *slash) 
         // parse the publicity parameter
         if (channel_name != NULL) {
             // send the join channel message to the server
-            snprintf(join_msg, MAX_MESSAGE_LENGTH, "UPDATE C %s %s", user->username, channel_name);
+            snprintf(join_msg, MAX_MESSAGE_LENGTH, "UPDATE C J %s %s", user->username, channel_name);
             write(chat->communicate_to_client, join_msg, strlen(join_msg));
 
             char response[RESPONSE_BUFFER];
@@ -611,6 +588,37 @@ void handle_join_channel(ChatState *chat, const User *user, int i, char *slash) 
                 // prints the servers response on the GUI
                 strncpy(chat->messages[(chat->num_messages)].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
                 chat->current_channel = strdup(channel_name);
+            } else {
+                strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
+            }
+        }
+    }
+}
+
+void handle_leaving_channel(ChatState *chat, const User *user, char *slash)
+{
+    char join_msg[MAX_MESSAGE_LENGTH];
+    char *command = strtok(slash, " ");
+    char *channel_name = strtok(NULL, " ");
+
+    // check if the command is "/leave <name>" to create a channel
+    if (strcmp(command, "/leave") == 0) {
+        // parse the publicity parameter
+        if (channel_name != NULL) {
+            // send the leave channel message to the server
+            snprintf(join_msg, MAX_MESSAGE_LENGTH, "UPDATE C R %s %s", user->username, channel_name);
+            write(chat->communicate_to_client, join_msg, strlen(join_msg));
+
+            char response[RESPONSE_BUFFER];
+            ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+            response[read_number] = '\0';
+
+            char *resp_code = strtok(strdup(response), "\n");
+
+            if (strcmp(resp_code, "OK") == 0) {
+                // prints the servers response on the GUI
+                strncpy(chat->messages[(chat->num_messages)].text, "Leaved Channel\0", MAX_MESSAGE_LENGTH);
+                chat->current_channel = strdup("N/A");
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }

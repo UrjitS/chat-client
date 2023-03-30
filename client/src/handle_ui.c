@@ -78,13 +78,6 @@ void handle_create(struct server_options * options, struct request * request) {
         dc_strcat(options->env, body, publicity);
         dc_strcat(options->env, body, "\3");
 
-        if (dc_strcmp(options->env, publicity, "0") == 0)
-        {
-            char * password = dc_strtok(options->env, NULL, " ");
-            dc_strcat(options->env, body, password);
-            dc_strcat(options->env, body, "\3");
-        }
-
         fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
         clear_debug_file_buffer(options->debug_log_file);
         send_create_channel(options->env, options->err, options->socket_fd,request->data);
@@ -144,8 +137,10 @@ void handle_update(struct server_options * options, struct request * request) {
 
     } else if (dc_strcmp(options->env, "C", request->obj) == 0)
     {
+        // JOIN or LEAVE
         dc_strtok(options->env, request->data, " ");
         dc_strtok(options->env, NULL, " ");
+        char * status = dc_strtok(options->env, NULL, " ");
 
         char * display_name = dc_strtok(options->env, NULL, " ");
         char * channel_name = dc_strtok(options->env, NULL, " ");
@@ -154,7 +149,12 @@ void handle_update(struct server_options * options, struct request * request) {
         dc_strcat(options->env, body, "\3");
         dc_strcat(options->env, body, "0\3");
         dc_strcat(options->env, body, "0\3");
-        dc_strcat(options->env, body, "1\3");
+        if (dc_strcmp(options->env, status, "J") == 0) {
+            dc_strcat(options->env, body, "1\3");
+        } else {
+            // Leave
+            dc_strcat(options->env, body, "2\3");
+        }
         dc_strcat(options->env, body, "1\3");
         dc_strcat(options->env, body, display_name);
         dc_strcat(options->env, body, "\3");
@@ -163,6 +163,7 @@ void handle_update(struct server_options * options, struct request * request) {
 
         fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
         clear_debug_file_buffer(options->debug_log_file);
+
         send_create_auth(options->env, options->err, options->socket_fd, body);
     } else if (dc_strcmp(options->env, "M", request->obj) == 0)
     {
