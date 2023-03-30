@@ -272,9 +272,15 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
                 flow++;
             } else if (flow == 2) {
                 char message[1024];
-                dc_strcpy(env, message, "400");
+                dc_strcpy(env, message, "201");
                 dc_strcat(env, message, "\3");
                 send_create_channel(env, err, client_sockets[i], message);
+                flow++;
+            } else if (flow == 3) {
+                char message[1024];
+                dc_strcpy(env, message, "200");
+                dc_strcat(env, message, "\3");
+                send_update_channel(env, err, client_sockets[i], message);
                 flow = 0;
             }
 //            send_create_message(env, err, client_sockets[i], message);

@@ -39,6 +39,10 @@ void handle_create_channel_response(struct server_options *options, char *body);
 void handle_create_message_response(struct server_options *options, char *body);
 void handle_create_auth_response(struct server_options *options, char *body);
 
+void handle_update_user_response(struct server_options *options, char *body);
+void handle_update_channel_response(struct server_options *options, char *body);
+void handle_update_message_response(struct server_options *options, char *body);
+void handle_update_auth_response(struct server_options *options, char *body);
 
 void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->type)
@@ -81,7 +85,7 @@ void handle_create_user_response(struct server_options *options, char *body)
     } else if (dc_strcmp(options->env, response_code, "201") == 0) {
         fprintf(options->debug_log_file, "CREATE USER SUCCESS\n");
         clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK", dc_strlen(options->env, "OK"));
+        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
     } else {
         fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
         clear_debug_file_buffer(options->debug_log_file);
@@ -215,7 +219,7 @@ void handle_create_message_response(struct server_options *options, char *body)
     {
         fprintf(options->debug_log_file, "CREATE MESSAGE SUCCESS\n");
         clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK"));
+        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
     }  else
     {
         fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
@@ -248,8 +252,73 @@ void handle_server_read(struct server_options * options, struct binary_header_fi
 
 }
 
-void handle_server_update(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+/**
+ * UPDATE STUFF
+ */
 
+void handle_update_user_response(struct server_options *options, char *body) {
+
+}
+
+void handle_update_channel_response(struct server_options *options, char *body) {
+    // 400 404 403 200
+
+    fprintf(options->debug_log_file, "HANDLING UPDATE CHANNEL RESP\n");
+    clear_debug_file_buffer(options->debug_log_file);
+
+    char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
+
+    if (dc_strcmp(options->env, response_code, "400") == 0) {
+        fprintf(options->debug_log_file, "Fields are invalid\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+    } else if (dc_strcmp(options->env, response_code, "404") == 0) {
+        fprintf(options->debug_log_file, "Channel or User Does not Exist\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Channel Does not Exist\n", dc_strlen(options->env, "Channel Does not Exist\n"));
+    } else if (dc_strcmp(options->env, response_code, "403") == 0) {
+        fprintf(options->debug_log_file, "Sender Name Does NOT match Display Name\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Sender Name Does NOT match Display Name\n", dc_strlen(options->env, "Sender Name Does NOT match Display Name\n"));
+    } else if (dc_strcmp(options->env, response_code, "200") == 0) {
+        fprintf(options->debug_log_file, "UPDATE CHANNEL SUCCESS\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
+    } else {
+        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+    }
+}
+
+void handle_update_message_response(struct server_options *options, char *body) {
+
+}
+
+void handle_update_auth_response(struct server_options *options, char *body) {
+
+}
+
+
+void handle_server_update(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+    switch (binaryHeaderField->object)
+    {
+        case USER:
+            handle_update_user_response(options, body);
+            break;
+        case CHANNEL:
+            handle_update_channel_response(options, body);
+            break;
+        case MESSAGE:
+            handle_update_message_response(options, body);
+            break;
+        case AUTH:
+            handle_update_auth_response(options, body);
+            break;
+        default:
+            break;
+    }
 }
 
 void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
