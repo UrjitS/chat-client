@@ -68,15 +68,11 @@ void resize_handler(ChatState *chat);
 
 void show_menu(ChatState *chat);
 
-void create_channel(ChatState *chat);
+void handle_create_channel(ChatState *chat, const User *user, int i, char *slash);
+
+void handle_join_channel(ChatState *chat, const User *user, int i, char *slash);
 
 _Noreturn void run(ChatState *chat, User *user);
-
-int validate_login_credentials(User *user);
-
-int validate_new_user_credentials(User *user);
-void handle_create_channel(ChatState *chat, const User *user, int i, char *slash);
-void handle_join_channel(ChatState *chat, const User *user, int i, char *slash);
 
 int main(int argc, char *argv[]) {
     bool has_port = false;
@@ -213,10 +209,6 @@ _Noreturn void run(ChatState *chat, User *user) {
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
-    // TODO if the entered string contains a "/" then it is a command (i.e. join/create channel, leave channel)
-    // If not then it is a message to be sent to the server
-    // Send message to server in the format:
-    // CREATE M <display-name> <channel-name> <message-content>
 
     while (1) {
         // handles window resizes
@@ -424,41 +416,6 @@ void show_login_menu(ChatState *chat) {
 }
 
 /**
- * this function validates the Users login credentials, it makes use of dummy data for now
- *
- * @param user User to be validated
- * */
-int validate_login_credentials(User *user) {
-    int valid = 1, invalid = 0;
-
-    const char *valid_username = "test";
-    const char *valid_password = "test";
-
-    bool condition = strcmp(user->username, valid_username) == 0 && strcmp(user->password, valid_password) == 0;
-
-    if (condition) {
-        return valid;
-    } else
-        return invalid;
-}
-
-/**
- * this function validates a new Users credentials
- *
- * @param user User to me validated
- * */
-int validate_new_user_credentials(User *user) {
-    int valid = 1, invalid = 0;
-
-    bool condition = strlen(user->username) > 0 && strlen(user->password) > 0 && strlen(user->email) > 0;
-
-    if (condition) {
-        return valid;
-    } else
-        return invalid;
-}
-
-/**
  * this function prints the messages on the chat window
  *
  * @param chat ChatState struct
@@ -500,6 +457,11 @@ void resize_handler(ChatState *chat) {
  * @param chat ChatState struct
  * */
 void get_user_input(ChatState *chat, User *user) {
+    // TODO if the entered string contains a "/" then it is a command (i.e. join/create channel, leave channel)
+    // If not then it is a message to be sent to the server
+    // Send message to server in the format:
+    // CREATE M <display-name> <channel-name> <message-content>
+
     // get user input
     int ch = getch();
     if (ch == KEY_ENTER || ch == '\n') {
@@ -511,7 +473,7 @@ void get_user_input(ChatState *chat, User *user) {
         strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
 
         if (strlen(chat->messages[chat->num_messages].text) > 0) {
-            handle_create_channel(chat, user, (chat->num_messages),strdup(chat->messages[chat->num_messages].text));
+            handle_create_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
             handle_join_channel(chat, user, (chat->num_messages), strdup(chat->messages[chat->num_messages].text));
         }
 
@@ -549,9 +511,15 @@ void get_user_input(ChatState *chat, User *user) {
     }
 }
 
-
-void handle_create_channel(ChatState *chat, const User *user, int i, char *slash)
-{
+/**
+ * this functions handles a create channel request
+ *
+ * @param chat ChatState struct
+ * @param user User struct
+ * @param i number of messages in the chat
+ * @param slash the token we use to identify a command
+ * */
+void handle_create_channel(ChatState *chat, const User *user, int i, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -562,8 +530,7 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
     if (strcmp(command, "/create") == 0) {
         // parse the publicity parameter
         if (channel_publicity != NULL) {
-            if (strcmp(channel_publicity, "0") == 0)
-            {
+            if (strcmp(channel_publicity, "0") == 0) {
                 // send the join channel message to the server
                 snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s %s", channel_name,
                          user->username, channel_publicity, channel_password);
@@ -583,12 +550,10 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
                     strcat(channel_list, ", ");
                     strcat(channel_list, channel_name);
                     chat->available_channel = strdup(channel_list);
-                } else
-                {
+                } else {
                     strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
                 }
-            } else
-            {
+            } else {
                 snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE C %s %s %s", channel_name,
                          user->username, channel_publicity);
                 write(chat->communicate_to_client, join_msg, strlen(join_msg));
@@ -599,26 +564,31 @@ void handle_create_channel(ChatState *chat, const User *user, int i, char *slash
 
                 char *resp_code = strtok(strdup(response), "\n");
 
-                if (strcmp(resp_code, "OK") == 0)
-                {
-                    strncpy(chat->messages[(chat->num_messages )].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
+                if (strcmp(resp_code, "OK") == 0) {
+                    strncpy(chat->messages[(chat->num_messages)].text, "Created Channel\0", MAX_MESSAGE_LENGTH);
                     // Add to available channels
                     char channel_list[1024];
                     strcpy(channel_list, chat->available_channel);
                     strcat(channel_list, ", ");
                     strcat(channel_list, channel_name);
                     chat->available_channel = strdup(channel_list);
-                } else
-                {
-                    strncpy(chat->messages[(chat->num_messages )].text, response, MAX_MESSAGE_LENGTH);
+                } else {
+                    strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
                 }
             }
         }
     }
 }
 
-void handle_join_channel(ChatState *chat, const User *user, int i, char *slash)
-{
+/**
+ * this functions handles a join channel request
+ *
+ * @param chat ChatState struct
+ * @param user User struct
+ * @param i number of messages in the chat
+ * @param slash the token we use to identify a command
+ * */
+void handle_join_channel(ChatState *chat, const User *user, int i, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -639,11 +609,10 @@ void handle_join_channel(ChatState *chat, const User *user, int i, char *slash)
 
             if (strcmp(resp_code, "OK") == 0) {
                 // prints the servers response on the GUI
-                strncpy(chat->messages[(chat->num_messages )].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
+                strncpy(chat->messages[(chat->num_messages)].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
                 chat->current_channel = strdup(channel_name);
-            } else
-            {
-                strncpy(chat->messages[(chat->num_messages )].text, response, MAX_MESSAGE_LENGTH);
+            } else {
+                strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
         }
     }
