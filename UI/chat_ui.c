@@ -69,8 +69,12 @@ void resize_handler(ChatState *chat);
 void show_menu(ChatState *chat);
 
 void handle_create_channel(ChatState *chat, const User *user, char *slash);
+
 void handle_join_channel(ChatState *chat, const User *user, char *slash);
+
 void handle_leaving_channel(ChatState *chat, const User *user, char *slash);
+
+void handle_logout(ChatState *chat, const User *user, char *slash);
 
 _Noreturn void run(ChatState *chat, User *user);
 
@@ -595,6 +599,13 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash)
     }
 }
 
+/**
+ * this functions handles a leave channel request
+ *
+ * @param chat ChatState struct
+ * @param user User struct
+ * @param slash the token we use to identify a command
+ * */
 void handle_leaving_channel(ChatState *chat, const User *user, char *slash)
 {
     char join_msg[MAX_MESSAGE_LENGTH];
@@ -622,6 +633,38 @@ void handle_leaving_channel(ChatState *chat, const User *user, char *slash)
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
+        }
+    }
+}
+
+/**
+ * this functions handles a logout request
+ *
+ * @param chat ChatState struct
+ * @param user User struct
+ * @param slash the token we use to identify a command
+ * */
+void handle_logout(ChatState *chat, const User *user, char *slash){
+    char join_msg[MAX_MESSAGE_LENGTH];
+    char *command = strtok(slash, " ");
+
+    // check if the command is "/logout" to logout
+    if(strcmp(command, "/logout") == 0) {
+        // send the logout message to the server
+        snprintf(join_msg, MAX_MESSAGE_LENGTH, "LOGOUT %s", user->username);
+        write(chat->communicate_to_client, join_msg, strlen(join_msg));
+
+        char response[RESPONSE_BUFFER];
+        ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+        response[read_number] = '\0';
+
+        char *resp_code = strtok(strdup(response), "\n");
+
+        if (strcmp(resp_code, "OK") == 0) {
+            // if okay this should redirect and show the login menu
+            show_login_menu(chat);
+        } else {
+            strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
         }
     }
 }
