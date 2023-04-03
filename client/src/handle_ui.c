@@ -123,7 +123,36 @@ void handle_create(struct server_options * options, struct request * request) {
 }
 
 void handle_read(struct server_options * options, struct request * request) {
+    char body[MAX_SIZE];
 
+    fprintf(options->debug_log_file, "HANDLE READ\n"); // Write a string to the file
+    clear_debug_file_buffer(options->debug_log_file);
+
+    if (dc_strcmp(options->env, "U", request->obj) == 0)
+    {
+
+    } else if (dc_strcmp(options->env, "C", request->obj) == 0)
+    {
+
+    } else if (dc_strcmp(options->env, "M", request->obj) == 0)
+    {
+        dc_strtok(options->env, request->data, " ");
+        dc_strtok(options->env, NULL, " ");
+        char * channel_name = dc_strtok(options->env, NULL, " ");
+        char * num_messages = dc_strtok(options->env, NULL, " ");
+
+        dc_strcpy(options->env, body, channel_name);
+        dc_strcat(options->env, body, "\3");
+        dc_strcat(options->env, body, num_messages);
+        dc_strcat(options->env, body, "\3");
+
+        fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
+        clear_debug_file_buffer(options->debug_log_file);
+        send_read_message(options->env, options->err, options->socket_fd, body);
+    } else if (dc_strcmp(options->env, "A", request->obj) == 0)
+    {
+
+    }
 }
 
 void handle_update(struct server_options * options, struct request * request) {
@@ -164,7 +193,7 @@ void handle_update(struct server_options * options, struct request * request) {
         fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
         clear_debug_file_buffer(options->debug_log_file);
 
-        send_create_auth(options->env, options->err, options->socket_fd, body);
+        send_update_channel(options->env, options->err, options->socket_fd, body);
     } else if (dc_strcmp(options->env, "M", request->obj) == 0)
     {
 
@@ -175,5 +204,31 @@ void handle_update(struct server_options * options, struct request * request) {
 }
 
 void handle_delete(struct server_options * options, struct request * request) {
+    char body[MAX_SIZE];
 
+    fprintf(options->debug_log_file, "HANDLE UPDATE\n"); // Write a string to the file
+    clear_debug_file_buffer(options->debug_log_file);
+
+    if (dc_strcmp(options->env, "U", request->obj) == 0)
+    {
+
+    } else if (dc_strcmp(options->env, "C", request->obj) == 0)
+    {
+
+    } else if (dc_strcmp(options->env, "M", request->obj) == 0)
+    {
+
+    } else if (dc_strcmp(options->env, "A", request->obj) == 0)
+    {
+        dc_strtok(options->env, request->data, " ");
+        dc_strtok(options->env, NULL, " ");
+        char * display_name = dc_strtok(options->env, NULL, " ");
+
+        dc_strcpy(options->env, body, display_name);
+        dc_strcat(options->env, body, "\3");
+
+        fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
+        clear_debug_file_buffer(options->debug_log_file);
+        send_delete_auth(options->env, options->err, options->socket_fd, body);
+    }
 }
