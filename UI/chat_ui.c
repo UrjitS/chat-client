@@ -76,6 +76,8 @@ void handle_leaving_channel(ChatState *chat, const User *user, char *slash);
 
 void handle_logout(ChatState *chat, const User *user, char *slash);
 
+void handle_send_messages(ChatState *chat, const User *user, char *slash);
+
 _Noreturn void run(ChatState *chat, User *user);
 
 int main(int argc, char *argv[]) {
@@ -361,19 +363,19 @@ void show_login_menu(ChatState *chat) {
     title_row /= 3;
     title_col = (title_col - strlen("*** Login ***")) / 2;
     username_row = title_row + 2;
-    username_col = (title_col - strlen("Enter your username: ")) / 2;
+    username_col = (title_col - strlen("Enter your login token: ")) / 2;
     password_row = username_row + 1;
     password_col = (title_col - strlen("Enter your password: ")) / 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Login ***");
-    mvprintw(username_row, username_col, "Enter your username: ");
+    mvprintw(username_row, username_col, "Enter your login token: ");
     move(username_row, username_col + strlen("Enter your username: "));
 
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
-    mvprintw(username_row, username_col + strlen("Enter your username: "), "%s", username);
+    mvprintw(username_row, username_col + strlen("Enter your login token: "), "%s", username);
 
     mvprintw(password_row, password_col, "Enter your password: ");
     move(password_row, password_col + strlen("Enter your password: "));
@@ -480,6 +482,8 @@ void get_user_input(ChatState *chat, User *user) {
             handle_create_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_join_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_leaving_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
+            handle_logout(chat, user, strdup(chat->messages[chat->num_messages].text));
+//            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
         }
 
         chat->messages[chat->num_messages].sender = 0;
@@ -529,7 +533,7 @@ void handle_create_channel(ChatState *chat, const User *user, char *slash)
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
     char *channel_publicity = strtok(NULL, " ");
-    char *channel_password = strtok(NULL, " ");
+
 
     // check if the command is "/create" to create a channel
     if (strcmp(command, "/create") == 0) {
@@ -557,6 +561,29 @@ void handle_create_channel(ChatState *chat, const User *user, char *slash)
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
 
+        }
+    }
+}
+
+void handle_send_messages(ChatState *chat, const User *user, char *slash)
+{
+    char join_msg[MAX_MESSAGE_LENGTH];
+
+    // send display name, channel name, and message content to server
+
+    if (strchr(slash, '/') == NULL) {
+        snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE M %s %s %s", user->username,
+                 chat->current_channel, slash);
+        write(chat->communicate_to_client, join_msg, strlen(join_msg));
+
+        char response[RESPONSE_BUFFER];
+        ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
+        response[read_number] = '\0';
+
+        char *resp_code = strtok(strdup(response), "\n");
+
+        if (strcmp(resp_code, "OK") != 0) {
+            strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
         }
     }
 }
@@ -592,6 +619,10 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash)
                 // prints the servers response on the GUI
                 strncpy(chat->messages[(chat->num_messages)].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
                 chat->current_channel = strdup(channel_name);
+                // Send a read message to the server
+                snprintf(join_msg, MAX_MESSAGE_LENGTH, "READ M %s %s", channel_name, "5");
+                write(chat->communicate_to_client, join_msg, strlen(join_msg));
+                // TODO read the messages from the server and display them
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
@@ -651,7 +682,7 @@ void handle_logout(ChatState *chat, const User *user, char *slash){
     // check if the command is "/logout" to logout
     if(strcmp(command, "/logout") == 0) {
         // send the logout message to the server
-        snprintf(join_msg, MAX_MESSAGE_LENGTH, "LOGOUT %s", user->username);
+        snprintf(join_msg, MAX_MESSAGE_LENGTH, "DESTROY A %s", user->username);
         write(chat->communicate_to_client, join_msg, strlen(join_msg));
 
         char response[RESPONSE_BUFFER];
@@ -665,6 +696,7 @@ void handle_logout(ChatState *chat, const User *user, char *slash){
             show_login_menu(chat);
         } else {
             strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
+            return;
         }
     }
 }
