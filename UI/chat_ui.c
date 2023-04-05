@@ -356,7 +356,7 @@ void show_signup_menu(ChatState *chat) {
 void show_login_menu(ChatState *chat) {
     clear();
     // Define variables for menu positions
-    int title_row, title_col, username_row, username_col, password_row, password_col;
+    int title_row, title_col, username_row, username_col, password_row, password_col, email_row, email_col;
 
     // Adjust positions based on terminal size
     getmaxyx(stdscr, title_row, title_col);
@@ -366,6 +366,8 @@ void show_login_menu(ChatState *chat) {
     username_col = (title_col - strlen("Enter your login token: ")) / 2;
     password_row = username_row + 1;
     password_col = (title_col - strlen("Enter your password: ")) / 2;
+    email_row = password_row + 1;
+    email_col = ((title_col - strlen("Enter your email: ")) / 2) - 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Login ***");
@@ -385,22 +387,33 @@ void show_login_menu(ChatState *chat) {
     getstr(password);
     mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
 
+    mvprintw(email_row, email_col, "Enter your email: ");
+    move(email_row, email_col + strlen("Enter your email: "));
+
+    // Read email input and display it
+    char email[MAX_EMAIL_LENGTH];
+    getstr(email);
+    mvprintw(email_row, email_col + strlen("Enter your email: "), "%s", email);
+
     User *user = malloc(sizeof(User));
 
     memset(user->username, 0, MAX_USERNAME_LENGTH);
     memset(user->password, 0, MAX_PASSWORD_LENGTH);
+    memset(user->email, 0, MAX_EMAIL_LENGTH);
 
     username[strlen(username)] = '\0';
     password[strlen(password)] = '\0';
+    email[strlen(email)] = '\0';
 
     strcpy(user->username, username);
     strcpy(user->password, password);
+    strcpy(user->email, email);
 
     // Make sure values are not empty or only spaces before sending to server
-    if (strlen(user->username) == 0 || strlen(user->password) == 0) {
+    if (strlen(user->username) == 0 || strlen(user->password) == 0 || strlen(user->email) == 0) {
         show_login_menu(chat);
     }
-    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_USERNAME_LENGTH, username, MAX_PASSWORD_LENGTH, password);
+    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_PASSWORD_LENGTH, password, MAX_EMAIL_LENGTH, email);
     write(chat->communicate_to_client, chat->input, strlen(chat->input));
 
     // Read from client and check response
