@@ -39,10 +39,21 @@ void handle_create_channel_response(struct server_options *options, char *body);
 void handle_create_message_response(struct server_options *options, char *body);
 void handle_create_auth_response(struct server_options *options, char *body);
 
+void handle_read_user_response(struct server_options *options, char *body);
+void handle_read_channel_response(struct server_options *options, char *body);
+void handle_read_message_response(struct server_options *options, char *body);
+void handle_read_auth_response(struct server_options *options, char *body);
+
+
 void handle_update_user_response(struct server_options *options, char *body);
 void handle_update_channel_response(struct server_options *options, char *body);
 void handle_update_message_response(struct server_options *options, char *body);
 void handle_update_auth_response(struct server_options *options, char *body);
+
+void handle_delete_user_response(struct server_options *options, char *body);
+void handle_delete_channel_response(struct server_options *options, char *body);
+void handle_delete_message_response(struct server_options *options, char *body);
+void handle_delete_auth_response(struct server_options *options, char *body);
 
 void handle_server_request(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
     switch (binaryHeaderField->type)
@@ -247,8 +258,96 @@ void handle_server_create(struct server_options * options, struct binary_header_
     }
 }
 
-void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+/**
+ * READ STUFF
+ */
 
+void handle_read_user_response(struct server_options *options, char *body) {
+
+}
+
+void handle_read_channel_response(struct server_options *options, char *body) {
+
+}
+
+void handle_read_message_response(struct server_options *options, char *body) {
+    // 400 404 200 206
+
+    fprintf(options->debug_log_file, "HANDLING READ MESSAGE RESP\n");
+    clear_debug_file_buffer(options->debug_log_file);
+
+    char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
+
+    if (dc_strcmp(options->env, response_code, "400") == 0) {
+        fprintf(options->debug_log_file, "Fields are invalid\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+    } else if (dc_strcmp(options->env, response_code, "404") == 0) {
+        fprintf(options->debug_log_file, "Channel NOT FOUND\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Channel NOT FOUND\n", dc_strlen(options->env, "Channel NOT FOUND\n"));
+    } else if ((dc_strcmp(options->env, response_code, "200") == 0) || (dc_strcmp(options->env, response_code, "206") == 0)) {
+        fprintf(options->debug_log_file, "Received All Counts\n");
+        clear_debug_file_buffer(options->debug_log_file);
+
+        char buffer[1024];
+        // read-message-partial-res-body = “206” ETX message-list
+        char * message_size = dc_strtok(options->env, NULL, "\3");
+
+        fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
+        fprintf(options->debug_log_file, "Message NUMBER: %s\n", message_size);
+        clear_debug_file_buffer(options->debug_log_file);
+
+        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, message_size, BASE);
+        dc_strcpy(options->env, buffer, "OK ");
+
+        for (int i = 0; i < channel_size; i++)
+        {
+            // message-info = display-name ETX channel-name ETX message-content ETX timestamp ETX
+            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+            dc_strcat(options->env, buffer, " ");
+            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+            dc_strcat(options->env, buffer, " ");
+            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+            dc_strcat(options->env, buffer, " ");
+            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+        }
+
+        dc_strcat(options->env, buffer, "\0");
+        fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
+        clear_debug_file_buffer(options->debug_log_file);
+
+        write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
+    } else {
+        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+    }
+}
+
+void handle_read_auth_response(struct server_options *options, char *body) {
+
+}
+
+void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+    switch (binaryHeaderField->object)
+    {
+        case USER:
+            handle_read_user_response(options, body);
+            break;
+        case CHANNEL:
+            handle_read_channel_response(options, body);
+            break;
+        case MESSAGE:
+            handle_read_message_response(options, body);
+            break;
+        case AUTH:
+            handle_read_auth_response(options, body);
+            break;
+        default:
+            break;
+    }
 }
 
 /**
@@ -320,6 +419,81 @@ void handle_server_update(struct server_options * options, struct binary_header_
     }
 }
 
-void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+/**
+ * DELETE STUFF
+ */
 
+void handle_delete_user_response(struct server_options *options, char *body) {
+
+}
+
+void handle_delete_channel_response(struct server_options *options, char *body) {
+
+}
+
+void handle_delete_message_response(struct server_options *options, char *body) {
+
+}
+
+void handle_delete_auth_response(struct server_options *options, char *body) {
+    // 400 404 403 412 200
+
+    fprintf(options->debug_log_file, "HANDLING CREATE MESSAGE RESP\n");
+    clear_debug_file_buffer(options->debug_log_file);
+
+    char * response_code = dc_strtok(options->env, body, "\3");
+    response_code[3] = '\0';
+
+    if (dc_strcmp(options->env, response_code, "400") == 0)
+    {
+        fprintf(options->debug_log_file, "Fields are invalid\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
+    } else if (dc_strcmp(options->env, response_code, "404") == 0)
+    {
+        fprintf(options->debug_log_file, "USER NOT FOUND\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "USER NOT FOUND\n", dc_strlen(options->env, "USER NOT FOUND\n"));
+    } else if (dc_strcmp(options->env, response_code, "403") == 0)
+    {
+        fprintf(options->debug_log_file, "DISPLAY NAMES DONT MATCH\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "DISPLAY NAMES DONT MATCH\n", dc_strlen(options->env, "DISPLAY NAMES DONT MATCH\n"));
+    } else if (dc_strcmp(options->env, response_code, "412") == 0)
+    {
+        fprintf(options->debug_log_file, "Already Exited\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "Already Exited\n", dc_strlen(options->env, "Already Exited\n"));
+    } else if (dc_strcmp(options->env, response_code, "200") == 0)
+    {
+        fprintf(options->debug_log_file, "Destroy Auth SUCCESS\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
+    }  else
+    {
+        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+    }
+}
+
+
+void handle_server_delete(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+    switch (binaryHeaderField->object)
+    {
+        case USER:
+            handle_delete_user_response(options, body);
+            break;
+        case CHANNEL:
+            handle_delete_channel_response(options, body);
+            break;
+        case MESSAGE:
+            handle_delete_message_response(options, body);
+            break;
+        case AUTH:
+            handle_delete_auth_response(options, body);
+            break;
+        default:
+            break;
+    }
 }
