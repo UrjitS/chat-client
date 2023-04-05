@@ -9,6 +9,12 @@
 #include <dlfcn.h>
 #include <netinet/in.h>
 #include <stdbool.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <pthread.h>
 
 #define MAX_MESSAGES 100
 #define MAX_MESSAGE_LENGTH 256
@@ -48,6 +54,7 @@ typedef struct {
     int message_bar_row;
     int communicate_to_client;
     int client_to_ui;
+    int shmid;
 } ChatState;
 
 void values_init(ChatState *chat);
@@ -80,11 +87,14 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash);
 
 _Noreturn void run(ChatState *chat, User *user);
 
+void *thread_message(void *arg);
+
 int main(int argc, char *argv[]) {
     bool has_port = false;
 
     int communicate_to_client[2];
     int client_to_ui[2];
+    sem_t *sem;
     ChatState *chatState = malloc(sizeof(ChatState));
 
     // check if server ip is provided
@@ -107,6 +117,26 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Create a shared memory segment
+    chatState->shmid = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | 0666);
+    if (chatState->shmid == -1) {
+        perror("shmget");
+        return EXIT_FAILURE;
+    }
+
+    // Attach the shared memory segment
+    sem = shmat(chatState->shmid, NULL, 0);
+    if (sem == (sem_t *) -1) {
+        perror("shmat");
+        return EXIT_FAILURE;
+    }
+
+    // Initialize the semaphore
+    if (sem_init(sem, 1, 1) == -1) {
+        perror("sem_init");
+        return EXIT_FAILURE;
+    }
+
     // Fork process
     int num = fork();
 
@@ -120,6 +150,23 @@ int main(int argc, char *argv[]) {
         close(communicate_to_client[0]);  // close the read end of the pipe
         close(client_to_ui[1]);  // close the writing end of the pipe
 
+        sem = (sem_t *) shmat(chatState->shmid, NULL, 0);
+        if (sem == (sem_t *) -1) {
+            perror("shmat");
+            return EXIT_FAILURE;
+        }
+
+        // use semaphore
+        sem_wait(sem);
+        printf("UI: Hello from UI");
+        sem_post(sem);
+
+        // detach the shared memory segment
+        if (shmdt(sem) == -1) {
+            perror("shmdt");
+            return EXIT_FAILURE;
+        }
+
         // Open server in background
         if (has_port) {
             char *args[] = {"./scalable_server", argv[1], argv[2], NULL};
@@ -128,7 +175,6 @@ int main(int argc, char *argv[]) {
             char *args[] = {"./scalable_server", argv[1], NULL};
             execvp(args[0], args);
         }
-
     } else {
         // parent process
         sleep(1);
@@ -147,11 +193,17 @@ int main(int argc, char *argv[]) {
             show_menu(chatState);
             endwin();
 
+            // use semaphore
+            sem_wait(sem);
+            printf("UI: Goodbye from UI");
+            sem_post(sem);
+
             // Wait for child process to finish
             wait(NULL);
             // Close all pipes and exit
             close(communicate_to_client[1]);  // close the pipe
             close(client_to_ui[0]);  // close the pipe
+            shmctl(chatState->shmid, IPC_RMID, NULL); // remove the shared memory segment
             free(chatState);
             return EXIT_SUCCESS;
         } else {
@@ -216,6 +268,9 @@ _Noreturn void run(ChatState *chat, User *user) {
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
 
+    // start thread
+    pthread_t thread;
+    pthread_create(&thread, NULL, thread_message, &chat->shmid);
     while (1) {
         // handles window resizes
         resize_handler(chat);
@@ -450,9 +505,31 @@ void print_messages(ChatState *chat, User *user) {
         } else {
             mvprintw(i + 1, 0, "[%s] Goofy: %s",
                      chat->messages[i + chat->scroll_offset].timestamp,
-                     chat->messages[i + chat->scroll_offset].text);
+                     /*chat->messages[i + chat->scroll_offset].text*/"test");
         }
     }
+}
+
+void *thread_message(void *arg){
+    sem_t *sem = (sem_t *) arg;
+
+    // wait from semaphore to become available
+    sem_wait(sem);
+
+    // read message from shared memory
+    ChatState* chatState = (ChatState*) shmat(chatState->shmid, NULL, 0);
+    Message* message = &chatState->messages[chatState->num_messages - 1];
+    shmdt(chatState);
+    User *user = malloc(sizeof(User));
+    strcpy(user->username, "Goofy");
+    message->sender = 1;
+    // add message to chat history
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    strftime(chatState->messages[chatState->num_messages].timestamp,
+             sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+
+    print_messages(chatState, user);
 }
 
 /**
@@ -476,11 +553,6 @@ void resize_handler(ChatState *chat) {
  * @param chat ChatState struct
  * */
 void get_user_input(ChatState *chat, User *user) {
-    // TODO if the entered string contains a "/" then it is a command (i.e. join/create channel, leave channel)
-    // If not then it is a message to be sent to the server
-    // Send message to server in the format:
-    // CREATE M <display-name> <channel-name> <message-content>
-
     // get user input
     int ch = getch();
     if (ch == KEY_ENTER || ch == '\n') {
@@ -540,8 +612,7 @@ void get_user_input(ChatState *chat, User *user) {
  * @param user User struct
  * @param slash the token we use to identify a command
  * */
-void handle_create_channel(ChatState *chat, const User *user, char *slash)
-{
+void handle_create_channel(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -578,8 +649,7 @@ void handle_create_channel(ChatState *chat, const User *user, char *slash)
     }
 }
 
-void handle_send_messages(ChatState *chat, const User *user, char *slash)
-{
+void handle_send_messages(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
 
     // send display name, channel name, and message content to server
@@ -608,8 +678,7 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash)
  * @param user User struct
  * @param slash the token we use to identify a command
  * */
-void handle_join_channel(ChatState *chat, const User *user, char *slash)
-{
+void handle_join_channel(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -650,8 +719,7 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash)
  * @param user User struct
  * @param slash the token we use to identify a command
  * */
-void handle_leaving_channel(ChatState *chat, const User *user, char *slash)
-{
+void handle_leaving_channel(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
     char *channel_name = strtok(NULL, " ");
@@ -688,12 +756,12 @@ void handle_leaving_channel(ChatState *chat, const User *user, char *slash)
  * @param user User struct
  * @param slash the token we use to identify a command
  * */
-void handle_logout(ChatState *chat, const User *user, char *slash){
+void handle_logout(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
     char *command = strtok(slash, " ");
 
     // check if the command is "/logout" to logout
-    if(strcmp(command, "/logout") == 0) {
+    if (strcmp(command, "/logout") == 0) {
         // send the logout message to the server
         snprintf(join_msg, MAX_MESSAGE_LENGTH, "DESTROY A %s", user->username);
         write(chat->communicate_to_client, join_msg, strlen(join_msg));
