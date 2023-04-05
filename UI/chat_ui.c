@@ -413,7 +413,7 @@ void show_login_menu(ChatState *chat) {
     if (strlen(user->username) == 0 || strlen(user->password) == 0 || strlen(user->email) == 0) {
         show_login_menu(chat);
     }
-    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_PASSWORD_LENGTH, password, MAX_EMAIL_LENGTH, email);
+    sprintf(chat->input, "CREATE A %.*s %.*s", MAX_EMAIL_LENGTH, email, MAX_PASSWORD_LENGTH, password);
     write(chat->communicate_to_client, chat->input, strlen(chat->input));
 
     // Read from client and check response
