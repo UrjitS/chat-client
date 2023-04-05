@@ -15,7 +15,9 @@
 #include <semaphore.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <fcntl.h>
 
+#define SEM_NAME "/user_messages_sem"
 #define MAX_MESSAGES 100
 #define MAX_MESSAGE_LENGTH 256
 #define MAX_USERNAME_LENGTH 20
@@ -54,7 +56,6 @@ typedef struct {
     int message_bar_row;
     int communicate_to_client;
     int client_to_ui;
-    int shmid;
 } ChatState;
 
 void values_init(ChatState *chat);
@@ -89,12 +90,13 @@ _Noreturn void run(ChatState *chat, User *user);
 
 void *thread_message(void *arg);
 
+sem_t * messaging_semaphore;
+
 int main(int argc, char *argv[]) {
     bool has_port = false;
 
     int communicate_to_client[2];
     int client_to_ui[2];
-    sem_t *sem;
     ChatState *chatState = malloc(sizeof(ChatState));
 
     // check if server ip is provided
@@ -117,24 +119,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Create a shared memory segment
-    chatState->shmid = shmget(IPC_PRIVATE, sizeof(sem_t), IPC_CREAT | 0666);
-    if (chatState->shmid == -1) {
-        perror("shmget");
-        return EXIT_FAILURE;
-    }
-
-    // Attach the shared memory segment
-    sem = shmat(chatState->shmid, NULL, 0);
-    if (sem == (sem_t *) -1) {
-        perror("shmat");
-        return EXIT_FAILURE;
-    }
-
-    // Initialize the semaphore
-    if (sem_init(sem, 1, 1) == -1) {
-        perror("sem_init");
-        return EXIT_FAILURE;
+    // Create a semaphore with initial value 1 in the parent process
+    messaging_semaphore = sem_open(SEM_NAME, O_CREAT | O_RDWR, 0644, 0);
+    if (messaging_semaphore == SEM_FAILED) {
+        perror("sem_open");
+        exit(1);
     }
 
     // Fork process
@@ -149,23 +138,6 @@ int main(int argc, char *argv[]) {
 
         close(communicate_to_client[0]);  // close the read end of the pipe
         close(client_to_ui[1]);  // close the writing end of the pipe
-
-        sem = (sem_t *) shmat(chatState->shmid, NULL, 0);
-        if (sem == (sem_t *) -1) {
-            perror("shmat");
-            return EXIT_FAILURE;
-        }
-
-        // use semaphore
-        sem_wait(sem);
-        printf("UI: Hello from UI");
-        sem_post(sem);
-
-        // detach the shared memory segment
-        if (shmdt(sem) == -1) {
-            perror("shmdt");
-            return EXIT_FAILURE;
-        }
 
         // Open server in background
         if (has_port) {
@@ -193,18 +165,14 @@ int main(int argc, char *argv[]) {
             show_menu(chatState);
             endwin();
 
-            // use semaphore
-            sem_wait(sem);
-            printf("UI: Goodbye from UI");
-            sem_post(sem);
-
             // Wait for child process to finish
             wait(NULL);
             // Close all pipes and exit
             close(communicate_to_client[1]);  // close the pipe
             close(client_to_ui[0]);  // close the pipe
-            shmctl(chatState->shmid, IPC_RMID, NULL); // remove the shared memory segment
             free(chatState);
+            sem_close(messaging_semaphore);
+            sem_unlink(SEM_NAME);
             return EXIT_SUCCESS;
         } else {
             printf("Server could not connect\n");
@@ -267,10 +235,10 @@ _Noreturn void run(ChatState *chat, User *user) {
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
-
+    // Start thread
     // start thread
     pthread_t thread;
-    pthread_create(&thread, NULL, thread_message, &chat->shmid);
+    pthread_create(&thread, NULL, thread_message, chat);
     while (1) {
         // handles window resizes
         resize_handler(chat);
@@ -418,7 +386,7 @@ void show_login_menu(ChatState *chat) {
     title_row /= 3;
     title_col = (title_col - strlen("*** Login ***")) / 2;
     username_row = title_row + 2;
-    username_col = (title_col - strlen("Enter your login token: ")) / 2;
+    username_col = (title_col - strlen("Enter your display name: ")) / 2;
     password_row = username_row + 1;
     password_col = (title_col - strlen("Enter your password: ")) / 2;
     email_row = password_row + 1;
@@ -426,13 +394,13 @@ void show_login_menu(ChatState *chat) {
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Login ***");
-    mvprintw(username_row, username_col, "Enter your login token: ");
+    mvprintw(username_row, username_col, "Enter your display name: ");
     move(username_row, username_col + strlen("Enter your username: "));
 
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
-    mvprintw(username_row, username_col + strlen("Enter your login token: "), "%s", username);
+    mvprintw(username_row, username_col + strlen("Enter your display name: "), "%s", username);
 
     mvprintw(password_row, password_col, "Enter your password: ");
     move(password_row, password_col + strlen("Enter your password: "));
@@ -505,31 +473,36 @@ void print_messages(ChatState *chat, User *user) {
         } else {
             mvprintw(i + 1, 0, "[%s] Goofy: %s",
                      chat->messages[i + chat->scroll_offset].timestamp,
-                     /*chat->messages[i + chat->scroll_offset].text*/"test");
+                     /*chat->messages[i + chat->scroll_offset].text*/ "Hello");
         }
     }
 }
 
 void *thread_message(void *arg){
-    sem_t *sem = (sem_t *) arg;
+    ChatState* chatState = (ChatState*) arg;
 
     // wait from semaphore to become available
-    sem_wait(sem);
+    while (1) {
 
-    // read message from shared memory
-    ChatState* chatState = (ChatState*) shmat(chatState->shmid, NULL, 0);
-    Message* message = &chatState->messages[chatState->num_messages - 1];
-    shmdt(chatState);
-    User *user = malloc(sizeof(User));
-    strcpy(user->username, "Goofy");
-    message->sender = 1;
-    // add message to chat history
-    time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
-    strftime(chatState->messages[chatState->num_messages].timestamp,
-             sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+        sem_wait(messaging_semaphore);
+        fprintf(stderr, "Waiting for semaphore");
+        // add message to chat history
+//        Message * message = &chatState->messages[chatState->num_messages - 1];
+//        User * user = malloc(sizeof(User));
+//        strcpy(user->username, "Goofy");
+//        message->sender = 1;
+        // add message to chat history
+//        time_t t = time(NULL);
+//        struct tm * tm = localtime(&t);
+//        strftime(chatState->messages[chatState->num_messages].timestamp,
+//                 sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+//        print_messages(chatState, user);
+        mvprintw(2 + 1, 1, "[%s] %s: %s",
+                 "chat->messages[2 + chat->scroll_offset].timestamp", "Goofy",
+                 "help");
+    //    sem_post(messaging_semaphore);
+    }
 
-    print_messages(chatState, user);
 }
 
 /**
@@ -568,7 +541,7 @@ void get_user_input(ChatState *chat, User *user) {
             handle_join_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_leaving_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_logout(chat, user, strdup(chat->messages[chat->num_messages].text));
-//            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
+            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
         }
 
         chat->messages[chat->num_messages].sender = 0;

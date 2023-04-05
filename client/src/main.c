@@ -15,13 +15,17 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <dc_posix/dc_string.h>
-#include <dc_util/system.h>
 #include <dc_util/types.h>
+#include <semaphore.h>
+#include <fcntl.h>
 
+#define SEM_NAME "/user_messages_sem"
 #define SERVER_PORT 5000
 
 void * handle_ui(void * arg);
 void * handle_server(void * arg);
+
+sem_t * messaging_semaphore;
 
 int main(int argc, char *argv[])
 {
@@ -52,6 +56,13 @@ int main(int argc, char *argv[])
         run_client = false;
     }
 
+    // Open the semaphore created by the parent process
+    messaging_semaphore = sem_open(SEM_NAME, O_CREAT | O_RDWR, 0644, 1);
+    if (messaging_semaphore == SEM_FAILED) {
+        printf("Failed to open semaphore\n");
+        run_client = false;
+    }
+
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (socket_fd < 0)
@@ -76,20 +87,9 @@ int main(int argc, char *argv[])
     if (run_client) {
         write(STDOUT_FILENO, "Server Running\n", dc_strlen(env, "Server Running\n"));
 
-        struct server_options options = {env, err, debug_log_file, socket_fd};
+        struct server_options options = {env, err, debug_log_file, socket_fd, messaging_semaphore};
 
-//        char * request = dc_strdup(env, err, "CREATE U a@gmail wumbo pass1234");
-//        char * request2 = dc_strdup(env, err, "CREATE A wumbo pass1234");
-//
-//        struct request *  request_obj = get_type_and_object(&options, request);
-//        handle_ui_request(&options, request_obj);
-//        free(request_obj->type);
-//        free(request_obj->obj);
-//        free(request_obj->data);
-//        free(request2);
-//        free(request);
-//        free(request_obj);
-//      Create two threads, one for reading from stdin and one for reading from socket
+        // Create two threads, one for reading from stdin and one for reading from socket
         pthread_t ui_thread, server_thread;
 
         pthread_create(&ui_thread, NULL, handle_ui, &options);
@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     free(err);
     close(socket_fd);
     fclose(debug_log_file);
+    sem_close(messaging_semaphore);
     return EXIT_SUCCESS;
 }
 

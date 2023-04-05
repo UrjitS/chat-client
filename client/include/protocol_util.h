@@ -5,6 +5,7 @@
 #include <dc_error/error.h>
 #include <arpa/inet.h>
 #include <dc_util/networking.h>
+#include <semaphore.h>
 
 #define DEFAULT_SIZE 1024
 #define DEFAULT_VERSION 0x1
@@ -45,6 +46,7 @@ struct server_options{
     FILE * debug_log_file;
 
     int socket_fd;
+    sem_t * messaging_semaphore;
 };
 /**
  * Display the header information to stdout.
