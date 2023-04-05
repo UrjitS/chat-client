@@ -6,19 +6,32 @@
 #include <dc_error/error.h>
 #include <dc_posix/dc_unistd.h>
 #include <netinet/in.h>
+#include <dc_util/io.h>
 
-struct binary_header_field * deserialize_header(uint32_t value) {
+struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value) {
     struct binary_header_field * header;
+    uint32_t header2;
 
+    // Convert to network byte order
     value = ntohl(value);
 
     header = malloc(sizeof(struct binary_header_field));
     header->version = (value >> 28) & 0x0F; // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
     header->type = (value >> 24) & 0x0F;    // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-    header->object = (value >> 16) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-    header->body_size = value & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
-//    header->body_size = ntohs(header->body_size);
+    // Check if the type is any of the pings or not
+    if (header->type == PINGUSER || header->type == PINGCHANNEL) {
+        return header;
+    }
+
+    // read the remaining 3 bytes
+    dc_read_fully(env, err, fd, &header2, 3);
+
+    // Convert to network byte order
+    header2 = ntohl(header2);
+
+    header->object = (header2 >> 24) & 0xFF;  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+    header->body_size = (header2 >> 8) & 0xFFFF;     // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
 
     return header;
 }

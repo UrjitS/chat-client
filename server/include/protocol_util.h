@@ -13,7 +13,8 @@ enum Type {
     READ = 0x2,
     UPDATE = 0x3,
     DESTROY = 0x4,
-    PING = 0x8
+    PINGUSER = 0x9,
+    PINGCHANNEL = 0xa
 };
 
 enum Object {

@@ -148,7 +148,8 @@ void * handle_server(void * arg)
         ssize_t n;
 
         // receive header from server
-        n = dc_read_fully(options->env, options->err, options->socket_fd, &header, sizeof(header));
+        // Read 1 byte
+        n = dc_read_fully(options->env, options->err, options->socket_fd, &header, 1);
 
         if (n < 0) {
             fprintf(options->debug_log_file, "Failed to read header from server.\n"); // Write a string to the file
@@ -159,7 +160,7 @@ void * handle_server(void * arg)
             clear_debug_file_buffer(options->debug_log_file);
         }
 
-        struct binary_header_field * binaryHeaderField = deserialize_header(header);
+        struct binary_header_field * binaryHeaderField = deserialize_header(options->env, options->err, options->socket_fd, header);
 
         // print deserialized header
         fprintf(options->debug_log_file, "HEADER CONTENTS.\n"); // Write a string to the file

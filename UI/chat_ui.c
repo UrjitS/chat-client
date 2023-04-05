@@ -363,19 +363,19 @@ void show_login_menu(ChatState *chat) {
     title_row /= 3;
     title_col = (title_col - strlen("*** Login ***")) / 2;
     username_row = title_row + 2;
-    username_col = (title_col - strlen("Enter your username: ")) / 2;
+    username_col = (title_col - strlen("Enter your login token: ")) / 2;
     password_row = username_row + 1;
     password_col = (title_col - strlen("Enter your password: ")) / 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Login ***");
-    mvprintw(username_row, username_col, "Enter your username: ");
+    mvprintw(username_row, username_col, "Enter your login token: ");
     move(username_row, username_col + strlen("Enter your username: "));
 
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
-    mvprintw(username_row, username_col + strlen("Enter your username: "), "%s", username);
+    mvprintw(username_row, username_col + strlen("Enter your login token: "), "%s", username);
 
     mvprintw(password_row, password_col, "Enter your password: ");
     move(password_row, password_col + strlen("Enter your password: "));
@@ -483,7 +483,7 @@ void get_user_input(ChatState *chat, User *user) {
             handle_join_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_leaving_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
             handle_logout(chat, user, strdup(chat->messages[chat->num_messages].text));
-            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
+//            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
         }
 
         chat->messages[chat->num_messages].sender = 0;
@@ -568,11 +568,10 @@ void handle_create_channel(ChatState *chat, const User *user, char *slash)
 void handle_send_messages(ChatState *chat, const User *user, char *slash)
 {
     char join_msg[MAX_MESSAGE_LENGTH];
-    char * special_command = strstr(slash, "/");
 
     // send display name, channel name, and message content to server
 
-    if (special_command != NULL) {
+    if (strchr(slash, '/') == NULL) {
         snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE M %s %s %s", user->username,
                  chat->current_channel, slash);
         write(chat->communicate_to_client, join_msg, strlen(join_msg));

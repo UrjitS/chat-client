@@ -14,7 +14,8 @@ enum Type {
     READ = 0x2,
     UPDATE = 0x3,
     DESTROY = 0x4,
-    PING = 0x8
+    PINGUSER = 0x9,
+    PINGCHANNEL = 0xa
 };
 
 enum Object {
@@ -50,7 +51,7 @@ struct server_options{
  * @param header Binary header struct
  * @param data
  */
-struct binary_header_field * deserialize_header(uint32_t value);
+struct binary_header_field * deserialize_header(struct dc_env *env, struct dc_error *err, int fd, uint32_t value);
 void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_header_field * header, int fd,
                       const char * body);
 void clear_debug_file_buffer(FILE * debug_log_file);

@@ -1,33 +1,15 @@
 #include "handle_server.h"
 #include <dc_c/dc_stdio.h>
-#include <dc_c/dc_stdlib.h>
 #include <dc_c/dc_string.h>
-#include <dc_env/env.h>
-#include <dc_error/error.h>
 #include <dc_posix/dc_unistd.h>
-#include <dc_util/io.h>
 #include <dlfcn.h>
-#include <dc_posix/dc_string.h>
-#include <dc_util/system.h>
-#include <dc_c/dc_stdio.h>
-#include <dc_c/dc_stdlib.h>
-#include <dc_c/dc_string.h>
-#include <dc_posix/arpa/dc_inet.h>
-#include <dc_posix/dc_dlfcn.h>
-#include <dc_posix/dc_poll.h>
-#include <dc_posix/dc_semaphore.h>
-#include <dc_posix/dc_signal.h>
-#include <dc_posix/dc_string.h>
-#include <dc_posix/dc_unistd.h>
-#include <dc_posix/sys/dc_select.h>
-#include <dc_posix/sys/dc_socket.h>
-#include <dc_posix/sys/dc_wait.h>
-#include <dc_unix/dc_getopt.h>
-#include <dc_util/networking.h>
 #include <dc_util/system.h>
 #include <dc_util/types.h>
 
 #define BASE 10
+
+void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
+void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 
 void handle_server_create(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
 void handle_server_read(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body);
@@ -70,10 +52,34 @@ void handle_server_request(struct server_options * options, struct binary_header
         case DESTROY:
             handle_server_delete(options, binaryHeaderField, body);
             break;
+        case PINGUSER:
+            handle_server_ping_user(options, binaryHeaderField, body);
+            break;
+        case PINGCHANNEL:
+            handle_server_ping_channel(options, binaryHeaderField, body);
+            break;
         default:
             break;
     }
 }
+
+/**
+ * Handle PING STUFF
+ */
+
+void handle_server_ping_user(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+    // The Ping Body of a User Ping must include the Display Name of the User that has been updated.
+
+}
+
+void handle_server_ping_channel(struct server_options * options, struct binary_header_field * binaryHeaderField, char * body) {
+    //  The Ping Body of the Channel Ping must include the Channel Name of the Channel that has been updated.
+
+}
+
+/**
+ * Handle CREATE STUFF
+ */
 
 void handle_create_user_response(struct server_options *options, char *body)
 {
@@ -83,7 +89,6 @@ void handle_create_user_response(struct server_options *options, char *body)
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         fprintf(options->debug_log_file, "Fields are invalid\n");
@@ -111,7 +116,6 @@ void handle_create_auth_response(struct server_options *options, char *body)
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
@@ -133,18 +137,19 @@ void handle_create_auth_response(struct server_options *options, char *body)
 
         fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
         fprintf(options->debug_log_file, "DisplayName: %s\n", display_name);
-        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
-        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
+//        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
+//        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
         clear_debug_file_buffer(options->debug_log_file);
 
         // OK GLOBAL, Channel1\0
-        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
+//        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
         dc_strcpy(options->env, buffer, "OK ");
 
-        for (int i = 0; i < channel_size; i++)
-        {
-            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
-        }
+//        for (int i = 0; i < channel_size; i++)
+//        {
+//            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+//        }
+        dc_strcat(options->env, buffer, dc_strtok(options->env, "Test", "\3"));
 
         dc_strcat(options->env, buffer, "\0");
         fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
@@ -165,7 +170,6 @@ void handle_create_channel_response(struct server_options *options, char *body)
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
@@ -208,7 +212,6 @@ void handle_create_message_response(struct server_options *options, char *body)
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
@@ -232,9 +235,23 @@ void handle_create_message_response(struct server_options *options, char *body)
         write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
     }  else
     {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        char buffer[1024];
+        // It's  a message to be displayed on the UI
+        // display-name ETX channel-name ETX message-content ETX timestamp ETX
+        char * display_name = dc_strtok(options->env, body, "\3");
+        dc_strtok(options->env, body, "\3");
+        char * message_content = dc_strtok(options->env, body, "\3");
+        dc_strtok(options->env, body, "\3");
+
+        // Create the body
+        dc_strcpy(options->env, buffer, display_name);
+        dc_strcat(options->env, buffer, " ");
+        dc_strcat(options->env, buffer, message_content);
+        dc_strcat(options->env, buffer, "\0");
+
+        fprintf(options->debug_log_file, "Message Received %s\n", buffer);
         clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
+        write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
     }
 }
 
@@ -277,7 +294,7 @@ void handle_read_message_response(struct server_options *options, char *body) {
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
+//    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         fprintf(options->debug_log_file, "Fields are invalid\n");
@@ -365,7 +382,7 @@ void handle_update_channel_response(struct server_options *options, char *body) 
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
+//    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
         fprintf(options->debug_log_file, "Fields are invalid\n");
@@ -442,7 +459,7 @@ void handle_delete_auth_response(struct server_options *options, char *body) {
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-    response_code[3] = '\0';
+//    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
