@@ -129,7 +129,7 @@ void handle_create_auth_response(struct server_options *options, char *body)
         write(STDOUT_FILENO, "User account not found\n", dc_strlen(options->env, "User account not found\n"));
     } else if (dc_strcmp(options->env, response_code, "200") == 0)
     {
-        char buffer[1024];
+        char buffer[DEFAULT_SIZE];
         // “200” ETX display-name ETX privilege-level ETX channel-name-list
         char * display_name = dc_strtok(options->env, NULL, "\3");
         char * privilege_level = dc_strtok(options->env, NULL, "\3");
@@ -235,7 +235,12 @@ void handle_create_message_response(struct server_options *options, char *body)
         write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
     }  else
     {
-        char buffer[1024];
+        fprintf(options->debug_log_file, "Server sent message\n");
+        clear_debug_file_buffer(options->debug_log_file);
+        // Get semaphore
+//        sem_wait(options->messaging_semaphore);
+
+        char buffer[DEFAULT_SIZE];
         // It's  a message to be displayed on the UI
         // display-name ETX channel-name ETX message-content ETX timestamp ETX
         char * display_name = dc_strtok(options->env, body, "\3");
@@ -252,6 +257,11 @@ void handle_create_message_response(struct server_options *options, char *body)
         fprintf(options->debug_log_file, "Message Received %s\n", buffer);
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
+
+        // Release Semaphore
+        sem_post(options->messaging_semaphore);
+        fprintf(options->debug_log_file, "Sent to uI\n");
+        clear_debug_file_buffer(options->debug_log_file);
     }
 }
 
@@ -308,7 +318,7 @@ void handle_read_message_response(struct server_options *options, char *body) {
         fprintf(options->debug_log_file, "Received All Counts\n");
         clear_debug_file_buffer(options->debug_log_file);
 
-        char buffer[1024];
+        char buffer[DEFAULT_SIZE];
         // read-message-partial-res-body = “206” ETX message-list
         char * message_size = dc_strtok(options->env, NULL, "\3");
 
