@@ -294,7 +294,7 @@ void show_signup_menu(ChatState *chat) {
     clear();
 
     // Define variables for menu positions
-    int title_row, title_col, username_row, username_col, password_row, password_col, email_row, email_col;
+    int title_row, title_col, username_row, username_col, password_row, email_row;
 
     // Adjust positions based on terminal size
     getmaxyx(stdscr, title_row, title_col);
@@ -303,9 +303,7 @@ void show_signup_menu(ChatState *chat) {
     username_row = title_row + 2;
     username_col = (title_col - strlen("Enter a username: ")) / 2;
     password_row = username_row + 1;
-    password_col = (title_col - strlen("Enter a password: ")) / 2;
     email_row = password_row + 1;
-    email_col = (title_col - strlen("Enter an email: ")) / 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Sign Up ***");
@@ -317,21 +315,21 @@ void show_signup_menu(ChatState *chat) {
     getstr(username);
     mvprintw(username_row, username_col + strlen("Enter a username: "), "%s", username);
 
-    mvprintw(password_row, password_col, "Enter a password: ");
-    move(password_row, password_col + strlen("Enter a password: "));
+    mvprintw(password_row, username_col, "Enter a password: ");
+    move(password_row, username_col + strlen("Enter a password: "));
 
     // Read password input and display asterisks instead of the actual characters
     char password[MAX_PASSWORD_LENGTH];
     getstr(password);
-    mvprintw(password_row, password_col + strlen("Enter a password: "), "%s", password);
+    mvprintw(password_row, username_col + strlen("Enter a password: "), "%s", password);
 
-    mvprintw(email_row, email_col - 1, "Enter an email: ");
-    move(email_row, email_col + strlen("Enter an email: "));
+    mvprintw(email_row, username_col, "Enter an email: ");
+    move(email_row, username_col + strlen("Enter an email: "));
 
     // Read email input and display it
     char email[MAX_EMAIL_LENGTH];
     getstr(email);
-    mvprintw(email_row, email_col + strlen("Enter an email: "), "%s", email);
+    mvprintw(email_row, username_col + strlen("Enter an email: "), "%s", email);
 
     User *user = malloc(sizeof(User));
 
@@ -380,7 +378,7 @@ void show_signup_menu(ChatState *chat) {
 void show_login_menu(ChatState *chat) {
     clear();
     // Define variables for menu positions
-    int title_row, title_col, username_row, username_col, password_row, password_col, email_row, email_col;
+    int title_row, title_col, username_row, username_col, password_row, email_row;
 
     // Adjust positions based on terminal size
     getmaxyx(stdscr, title_row, title_col);
@@ -389,35 +387,33 @@ void show_login_menu(ChatState *chat) {
     username_row = title_row + 2;
     username_col = (title_col - strlen("Enter your display name: ")) / 2;
     password_row = username_row + 1;
-    password_col = (title_col - strlen("Enter your password: ")) / 2;
     email_row = password_row + 1;
-    email_col = ((title_col - strlen("Enter your email: ")) / 2) - 2;
 
     // Print menu with adjusted positions
     mvprintw(title_row, title_col, "*** Login ***");
     mvprintw(username_row, username_col, "Enter your display name: ");
-    move(username_row, username_col + strlen("Enter your username: "));
+    move(username_row, username_col + strlen("Enter your display name: "));
 
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
     mvprintw(username_row, username_col + strlen("Enter your display name: "), "%s", username);
 
-    mvprintw(password_row, password_col, "Enter your password: ");
-    move(password_row, password_col + strlen("Enter your password: "));
+    mvprintw(password_row, username_col, "Enter your password: ");
+    move(password_row, username_col + strlen("Enter your password: "));
 
     // Read password input and display asterisks instead of the actual characters
     char password[MAX_PASSWORD_LENGTH];
     getstr(password);
-    mvprintw(password_row, password_col + strlen("Enter your password: "), "%s", password);
+    mvprintw(password_row, username_col + strlen("Enter your password: "), "%s", password);
 
-    mvprintw(email_row, email_col, "Enter your email: ");
-    move(email_row, email_col + strlen("Enter your email: "));
+    mvprintw(email_row, username_col, "Enter your email: ");
+    move(email_row, username_col + strlen("Enter your email: "));
 
     // Read email input and display it
     char email[MAX_EMAIL_LENGTH];
     getstr(email);
-    mvprintw(email_row, email_col + strlen("Enter your email: "), "%s", email);
+    mvprintw(email_row, username_col + strlen("Enter your email: "), "%s", email);
 
     User *user = malloc(sizeof(User));
 
