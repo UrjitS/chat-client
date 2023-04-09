@@ -295,13 +295,29 @@ static void handle_client_data(struct dc_env *env, struct dc_error *err, int *cl
                 // IDK why tho
                 printf("Sent message\n");
                 flow++;
-            } // else if (flow == 3) {
-//                char message[1024];
-//                dc_strcpy(env, message, "201");
-//                dc_strcat(env, message, "\3");
-//                send_create_channel(env, err, client_sockets[i], message);
-//                flow++;
-//            }
+            } else if (flow == 3) {
+                printf("Starting\n");
+                char message1[1024];
+                dc_strcpy(env, message1, "201");
+                dc_strcat(env, message1, "\3");
+                send_create_message(env, err, client_sockets[i], message1);
+                char message[1024];
+                sleep(1);
+                printf("Sending message\n");
+                // display-name ETX channel-name ETX message-content ETX timestamp ETX
+                dc_strcpy(env, message, "Wumbo");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "global");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "Hello World");
+                dc_strcat(env, message, "\3");
+                dc_strcat(env, message, "0000000064228f8a");
+                dc_strcat(env, message, "\3");
+                send_create_message(env, err, client_sockets[i], message);
+                // IDK why tho
+                printf("Sent message\n");
+                flow++;
+            }
 //        } else if (flow >= 4) {
 //            char message[1024];
 //            dc_strcpy(env, message, "200");

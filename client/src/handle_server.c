@@ -3,7 +3,6 @@
 #include <dc_c/dc_string.h>
 #include <dc_posix/dc_unistd.h>
 #include <dlfcn.h>
-#include <dc_util/system.h>
 #include <dc_util/types.h>
 
 #define BASE 10
@@ -215,52 +214,55 @@ void handle_create_message_response(struct server_options *options, char *body)
 
     if (dc_strcmp(options->env, response_code, "400") == 0)
     {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
+        fprintf(options->debug_log_file, "Fields are invalid\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
     } else if (dc_strcmp(options->env, response_code, "404") == 0)
     {
-        fprintf(options->debug_log_file, "CHANNEL NOT FOUND\n");
+        fprintf(options->debug_log_file, "CHANNEL NOT FOUND\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "CHANNEL NOT FOUND\n", dc_strlen(options->env, "CHANNEL NOT FOUND\n"));
     } else if (dc_strcmp(options->env, response_code, "403") == 0)
     {
-        fprintf(options->debug_log_file, "DISPLAY NAMES DONT MATCH\n");
+        fprintf(options->debug_log_file, "DISPLAY NAMES DONT MATCH\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "DISPLAY NAMES DONT MATCH\n", dc_strlen(options->env, "DISPLAY NAMES DONT MATCH\n"));
     } else if (dc_strcmp(options->env, response_code, "201") == 0)
     {
-        fprintf(options->debug_log_file, "CREATE MESSAGE SUCCESS\n");
+        fprintf(options->debug_log_file, "CREATE MESSAGE SUCCESS\n\n");
         clear_debug_file_buffer(options->debug_log_file);
-        write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
+        write(STDOUT_FILENO, "OK2\n", dc_strlen(options->env, "OK\n"));
     }  else
     {
         fprintf(options->debug_log_file, "Server sent message\n");
         clear_debug_file_buffer(options->debug_log_file);
         // Get semaphore
-//        sem_wait(options->messaging_semaphore);
 
         char buffer[DEFAULT_SIZE];
         // It's  a message to be displayed on the UI
         // display-name ETX channel-name ETX message-content ETX timestamp ETX
-        char * display_name = dc_strtok(options->env, body, "\3");
-        dc_strtok(options->env, body, "\3");
-        char * message_content = dc_strtok(options->env, body, "\3");
-        dc_strtok(options->env, body, "\3");
+        dc_strtok(options->env, NULL, "\3");
+        char * message_content = dc_strtok(options->env, NULL, "\3");
+        char * time_stamp = dc_strtok(options->env, NULL, "\3");
 
         // Create the body
-        dc_strcpy(options->env, buffer, display_name);
-        dc_strcat(options->env, buffer, " ");
+        dc_strcpy(options->env, buffer, response_code);
+        dc_strcat(options->env, buffer, "\3");
         dc_strcat(options->env, buffer, message_content);
+        dc_strcat(options->env, buffer, "\3");
+        dc_strcat(options->env, buffer, time_stamp);
+        dc_strcat(options->env, buffer, "\3");
         dc_strcat(options->env, buffer, "\0");
 
-        fprintf(options->debug_log_file, "Message Received %s\n", buffer);
+        fprintf(options->debug_log_file, "Message Received %s\n\n", buffer);
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
 
         // Release Semaphore
         sem_post(options->messaging_semaphore);
-        fprintf(options->debug_log_file, "Sent to uI\n");
+        fprintf(options->debug_log_file, "Sent to uI\n\n");
+        // send CM request with 200
+//        send_create_message(options->env, options->err, options->socket_fd,"200\3");
         clear_debug_file_buffer(options->debug_log_file);
     }
 }
@@ -304,14 +306,13 @@ void handle_read_message_response(struct server_options *options, char *body) {
     clear_debug_file_buffer(options->debug_log_file);
 
     char * response_code = dc_strtok(options->env, body, "\3");
-//    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
+        fprintf(options->debug_log_file, "Fields are invalid\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
     } else if (dc_strcmp(options->env, response_code, "404") == 0) {
-        fprintf(options->debug_log_file, "Channel NOT FOUND\n");
+        fprintf(options->debug_log_file, "Channel NOT FOUND\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Channel NOT FOUND\n", dc_strlen(options->env, "Channel NOT FOUND\n"));
     } else if ((dc_strcmp(options->env, response_code, "200") == 0) || (dc_strcmp(options->env, response_code, "206") == 0)) {
@@ -342,12 +343,12 @@ void handle_read_message_response(struct server_options *options, char *body) {
         }
 
         dc_strcat(options->env, buffer, "\0");
-        fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
+        fprintf(options->debug_log_file, "UI RESPONSE: %s\n\n", buffer);
         clear_debug_file_buffer(options->debug_log_file);
 
         write(STDOUT_FILENO, buffer, dc_strlen(options->env, buffer));
     } else {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
     }
@@ -395,23 +396,23 @@ void handle_update_channel_response(struct server_options *options, char *body) 
 //    response_code[3] = '\0';
 
     if (dc_strcmp(options->env, response_code, "400") == 0) {
-        fprintf(options->debug_log_file, "Fields are invalid\n");
+        fprintf(options->debug_log_file, "Fields are invalid\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Fields are invalid\n", dc_strlen(options->env, "Fields are invalid\n"));
     } else if (dc_strcmp(options->env, response_code, "404") == 0) {
-        fprintf(options->debug_log_file, "Channel or User Does not Exist\n");
+        fprintf(options->debug_log_file, "Channel or User Does not Exist\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Channel Does not Exist\n", dc_strlen(options->env, "Channel Does not Exist\n"));
     } else if (dc_strcmp(options->env, response_code, "403") == 0) {
-        fprintf(options->debug_log_file, "Sender Name Does NOT match Display Name\n");
+        fprintf(options->debug_log_file, "Sender Name Does NOT match Display Name\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "Sender Name Does NOT match Display Name\n", dc_strlen(options->env, "Sender Name Does NOT match Display Name\n"));
     } else if (dc_strcmp(options->env, response_code, "200") == 0) {
-        fprintf(options->debug_log_file, "UPDATE CHANNEL SUCCESS\n");
+        fprintf(options->debug_log_file, "UPDATE CHANNEL SUCCESS\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "OK\n", dc_strlen(options->env, "OK\n"));
     } else {
-        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n");
+        fprintf(options->debug_log_file, "INCORRECT RESPONSE CODE\n\n");
         clear_debug_file_buffer(options->debug_log_file);
         write(STDOUT_FILENO, "SERVER ERROR\n", dc_strlen(options->env, "SERVER ERROR\n"));
     }
