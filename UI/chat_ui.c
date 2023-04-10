@@ -4,14 +4,9 @@
 #include <signal.h>
 #include <time.h>
 #include <stdlib.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <dlfcn.h>
-#include <netinet/in.h>
 #include <stdbool.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/types.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -75,7 +70,7 @@ void get_user_input(ChatState *chat, User *user);
 
 void resize_handler(ChatState *chat);
 
-void show_menu(ChatState *chat);
+_Noreturn void show_menu(ChatState *chat);
 
 void handle_create_channel(ChatState *chat, const User *user, char *slash);
 
@@ -92,7 +87,6 @@ _Noreturn void run(ChatState *chat, User *user);
 void *thread_message(void *arg);
 
 sem_t * messaging_semaphore;
-
 int main(int argc, char *argv[]) {
     bool has_port = false;
 
@@ -164,17 +158,17 @@ int main(int argc, char *argv[]) {
         if (strcmp(input_str, "Server Running") == 0) {
             values_init(chatState);
             show_menu(chatState);
-            endwin();
-
-            // Wait for child process to finish
-            wait(NULL);
-            // Close all pipes and exit
-            close(communicate_to_client[1]);  // close the pipe
-            close(client_to_ui[0]);  // close the pipe
-            free(chatState);
-            sem_close(messaging_semaphore);
-            sem_unlink(SEM_NAME);
-            return EXIT_SUCCESS;
+//            endwin();
+//
+//            // Wait for child process to finish
+//            wait(NULL);
+//            // Close all pipes and exit
+//            close(communicate_to_client[1]);  // close the pipe
+//            close(client_to_ui[0]);  // close the pipe
+//            free(chatState);
+//            sem_close(messaging_semaphore);
+//            sem_unlink(SEM_NAME);
+//            return EXIT_SUCCESS;
         } else {
             printf("Server could not connect\n");
             return EXIT_FAILURE;
@@ -236,7 +230,6 @@ _Noreturn void run(ChatState *chat, User *user) {
 
     // ignore window resize signals initially
     signal(SIGWINCH, SIG_IGN);
-    // Start thread
     // start thread
     pthread_t thread;
     pthread_create(&thread, NULL, thread_message, chat);
@@ -244,7 +237,7 @@ _Noreturn void run(ChatState *chat, User *user) {
         // handles window resizes
         resize_handler(chat);
         // print messages
-        print_messages(chat, user);
+        //print_messages(chat, user);
         // display user input
         print_sections(chat);
         // get user input
@@ -262,7 +255,7 @@ _Noreturn void run(ChatState *chat, User *user) {
  *
  * @param chat ChatState struct
  * */
-void show_menu(ChatState *chat) {
+_Noreturn void show_menu(ChatState *chat) {
     int is_login = 0;
     while (1) {
         clear();
@@ -474,36 +467,46 @@ void * thread_message(void *arg){
 
     // wait from semaphore to become available
     while (1) {
-
         sem_wait(messaging_semaphore);
-        // add message to chat history
-        strncpy(chatState->messages[chatState->num_messages].text, "reee", MAX_MESSAGE_LENGTH);
-        strncpy(chatState->messages[chatState->num_messages].username, "username", MAX_USERNAME_LENGTH);
-        // add message to chat history
-        time_t t = time(NULL);
-        struct tm * tm = localtime(&t);
-        strftime(chatState->messages[chatState->num_messages].timestamp,
-                 sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+        // Read from client and check response
+        char response[RESPONSE_BUFFER];
+        ssize_t read_number = read(chatState->client_to_ui, response, sizeof(response));
+        response[read_number] = '\0';
 
-        chatState->num_messages++;
+        char * user_name = strtok(response, "\3");
+        char * user_message = strtok(NULL, "\3");
+        char * time_stamp = strtok(NULL, "\3");
 
-        Message * message = &chatState->messages[chatState->num_messages];
-        User *user = malloc(sizeof(User));
+        if (user_name != NULL && user_message != NULL) {
+            // add message to chat history
+            strncpy(chatState->messages[chatState->num_messages].text, user_message, MAX_MESSAGE_LENGTH);
+            strncpy(chatState->messages[chatState->num_messages].username, user_name, MAX_USERNAME_LENGTH);
+            // TODO replace this with actual timestamp from server
+            strcpy(chatState->messages[chatState->num_messages].timestamp, time_stamp);
+            // add message to chat history
+//            time_t t = time(NULL);
+//            struct tm * tm = localtime(&t);
+//            strftime(chatState->messages[chatState->num_messages].timestamp,
+//                     sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
 
-        memset(user->username, 0, MAX_USERNAME_LENGTH);
-        memset(user->password, 0, MAX_PASSWORD_LENGTH);
-        memset(user->email, 0, MAX_EMAIL_LENGTH);
+            chatState->num_messages++;
 
-        strcpy(user->username, "username");
-        strcpy(user->password, "password");
-        strcpy(user->email, "email");
+            Message * message = &chatState->messages[chatState->num_messages];
+            User *user = malloc(sizeof(User));
 
-        message->sender = 1;
+            memset(user->username, 0, MAX_USERNAME_LENGTH);
+            memset(user->password, 0, MAX_PASSWORD_LENGTH);
+            memset(user->email, 0, MAX_EMAIL_LENGTH);
 
-        print_messages(chatState, user);
-        refresh();
+            strcpy(user->username, "username");
+            strcpy(user->password, "password");
+            strcpy(user->email, "email");
 
-        //    sem_post(messaging_semaphore);
+            message->sender = 1;
+
+            print_messages(chatState, user);
+            refresh();
+        }
     }
 
 }
@@ -529,6 +532,7 @@ void resize_handler(ChatState *chat) {
  * @param chat ChatState struct
  * */
 void get_user_input(ChatState *chat, User *user) {
+    // TODO don't display the users regular message since server will echo it back
     // get user input
     int ch = getch();
     if (ch == KEY_ENTER || ch == '\n') {
@@ -642,7 +646,7 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash) {
 
         char *resp_code = strtok(strdup(response), "\n");
 
-        if (strcmp(resp_code, "OK") != 0) {
+        if (strcmp(resp_code, "OK2") != 0) {
             strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
         }
     }
@@ -681,7 +685,7 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash) {
                 // Send a read message to the server
                 snprintf(join_msg, MAX_MESSAGE_LENGTH, "READ M %s %s", channel_name, "5");
                 write(chat->communicate_to_client, join_msg, strlen(join_msg));
-                // TODO read the messages from the server and display them
+                //  read the messages from the server and display them
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
