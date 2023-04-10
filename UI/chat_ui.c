@@ -299,6 +299,7 @@ void show_signup_menu(ChatState *chat) {
     email_row = password_row + 1;
 
     // Print menu with adjusted positions
+    mvprintw(4 , 0, "If you have an account already, type 'login' as your username and hit enter");
     mvprintw(title_row, title_col, "*** Sign Up ***");
     mvprintw(username_row, username_col, "Enter a username: ");
     move(username_row, username_col + strlen("Enter a username: "));
@@ -306,6 +307,9 @@ void show_signup_menu(ChatState *chat) {
     // Read username input and display it on the screen
     char username[MAX_USERNAME_LENGTH];
     getstr(username);
+    if(strcmp(username, "login") == 0){
+        show_login_menu(chat);
+    }
     mvprintw(username_row, username_col + strlen("Enter a username: "), "%s", username);
 
     mvprintw(password_row, username_col, "Enter a password: ");
