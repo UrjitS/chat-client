@@ -80,7 +80,7 @@ void handle_create(struct server_options * options, struct request * request) {
 
         fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
         clear_debug_file_buffer(options->debug_log_file);
-        send_create_channel(options->env, options->err, options->socket_fd,request->data);
+        send_create_channel(options->env, options->err, options->socket_fd,body);
     } else if (dc_strcmp(options->env, "M", request->obj) == 0)
     {
         // display-name ETX channel-name ETX message-content ETX timestamp ETX

@@ -4,7 +4,6 @@
 #include <dc_c/dc_string.h>
 #include <dc_env/env.h>
 #include <dc_error/error.h>
-#include <dc_posix/dc_unistd.h>
 #include <netinet/in.h>
 #include <dc_util/io.h>
 
@@ -41,11 +40,9 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
 {
     char data[DEFAULT_SIZE];
 
-
     // Create the packet
     uint32_t packet = (((((uint32_t)header->version) & 0xF) << 28)) | ((((uint32_t)header->type) & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
                       ((((uint32_t)header->object) & 0xFF) << 16) | (((uint32_t)header->body_size) & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-
     // Convert to network byte order.
     packet = htonl(packet);
 
@@ -55,7 +52,7 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
     // Add the body to the data buffer
     dc_memcpy(env, data + sizeof(uint32_t), body, dc_strlen(env, body));
 
-    dc_write(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
+    dc_write_fully(env, err, fd, &data, (sizeof(uint32_t) + dc_strlen(env, body)));
 }
 
 void clear_debug_file_buffer(FILE * debug_log_file)
@@ -195,7 +192,7 @@ void send_update_channel(struct dc_env *env, struct dc_error *err, int fd, const
     serialize_header(env, err, &header, fd, body);
 }
 
-void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header

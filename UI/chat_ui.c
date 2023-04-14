@@ -237,7 +237,7 @@ _Noreturn void run(ChatState *chat, User *user) {
         // handles window resizes
         resize_handler(chat);
         // print messages
-        //print_messages(chat, user);
+        print_messages(chat, user);
         // display user input
         print_sections(chat);
         // get user input
@@ -438,7 +438,7 @@ void show_login_menu(ChatState *chat) {
     ssize_t read_number = read(chat->client_to_ui, response, sizeof(response));
     response[read_number] = '\0';
 
-    char *resp_code = strtok(response, " ");
+    char * resp_code = strtok(response, " ");
 
     if (strcmp(resp_code, "OK") == 0) {
         chat->available_channel = strdup(strtok(NULL, "\0"));
@@ -485,13 +485,14 @@ void * thread_message(void *arg){
             // add message to chat history
             strncpy(chatState->messages[chatState->num_messages].text, user_message, MAX_MESSAGE_LENGTH);
             strncpy(chatState->messages[chatState->num_messages].username, user_name, MAX_USERNAME_LENGTH);
-            // TODO replace this with actual timestamp from server
-            strcpy(chatState->messages[chatState->num_messages].timestamp, time_stamp);
-            // add message to chat history
-//            time_t t = time(NULL);
-//            struct tm * tm = localtime(&t);
-//            strftime(chatState->messages[chatState->num_messages].timestamp,
-//                     sizeof(chatState->messages[chatState->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+
+            time_t timestamp_seconds = strtol(time_stamp, NULL, 16);
+            struct tm *tm = localtime(&timestamp_seconds);
+
+            char formatted_time[20];
+            strftime(formatted_time, 20, "%Y-%m-%d %H:%M:%S", tm);
+
+            strcpy(chatState->messages[chatState->num_messages].timestamp, formatted_time);
 
             chatState->num_messages++;
 
@@ -541,32 +542,32 @@ void get_user_input(ChatState *chat, User *user) {
     int ch = getch();
     if (ch == KEY_ENTER || ch == '\n') {
         // add user input to chat history with sender set to 0
-        time_t t = time(NULL);
-        struct tm *tm = localtime(&t);
-        strftime(chat->messages[chat->num_messages].timestamp,
-                 sizeof(chat->messages[chat->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
-        strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
+//        time_t t = time(NULL);
+//        struct tm *tm = localtime(&t);
+//        strftime(chat->messages[chat->num_messages].timestamp,
+//                 sizeof(chat->messages[chat->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
+//        strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
 
-        if (strlen(chat->messages[chat->num_messages].text) > 0) {
-            handle_create_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
-            handle_join_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
-            handle_leaving_channel(chat, user, strdup(chat->messages[chat->num_messages].text));
-            handle_logout(chat, user, strdup(chat->messages[chat->num_messages].text));
-            handle_send_messages(chat, user, strdup(chat->messages[chat->num_messages].text));
+        if (strlen(chat->input_buffer) > 0) {
+            handle_logout(chat, user, strdup(chat->input_buffer));
+            handle_create_channel(chat, user, strdup(chat->input_buffer));
+            handle_join_channel(chat, user, strdup(chat->input_buffer));
+            handle_leaving_channel(chat, user, strdup(chat->input_buffer));
+            handle_send_messages(chat, user, strdup(chat->input_buffer));
         }
 
-        chat->messages[chat->num_messages].sender = 0;
-        strcpy(chat->messages[chat->num_messages].username, user->username);
-        chat->num_messages++;
-        if (chat->num_messages > MAX_MESSAGES) {
-            // if chat history is full, remove the oldest message
-            for (int i = 0; i < MAX_MESSAGES - 1; ++i) {
-                chat->messages[i].text[0] = chat->messages[i + 1].text[0];
-                chat->messages[i].sender = chat->messages[i + 1].sender;
-                strcpy(chat->messages[i].timestamp, chat->messages[i + 1].timestamp);
-            }
-            chat->num_messages = MAX_MESSAGES;
-        }
+//        chat->messages[chat->num_messages].sender = 0;
+//        strcpy(chat->messages[chat->num_messages].username, user->username);
+//        chat->num_messages++;
+//        if (chat->num_messages > MAX_MESSAGES) {
+//            // if chat history is full, remove the oldest message
+//            for (int i = 0; i < MAX_MESSAGES - 1; ++i) {
+//                chat->messages[i].text[0] = chat->messages[i + 1].text[0];
+//                chat->messages[i].sender = chat->messages[i + 1].sender;
+//                strcpy(chat->messages[i].timestamp, chat->messages[i + 1].timestamp);
+//            }
+//            chat->num_messages = MAX_MESSAGES;
+//        }
         // clear input buffer and reset input length
         memset(chat->input_buffer, 0, MAX_MESSAGE_LENGTH);
         chat->input_length = 0;
@@ -639,7 +640,7 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash) {
 
     // send display name, channel name, and message content to server
 
-    if (strchr(slash, '/') == NULL) {
+    if (strchr(slash, '/') == NULL && strcmp(chat->current_channel, "N/A") != 0) {
         snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE M %s %s %s", user->username,
                  chat->current_channel, slash);
         write(chat->communicate_to_client, join_msg, strlen(join_msg));
@@ -684,12 +685,13 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash) {
 
             if (strcmp(resp_code, "OK") == 0) {
                 // prints the servers response on the GUI
-                strncpy(chat->messages[(chat->num_messages)].text, "Joined Channel\0", MAX_MESSAGE_LENGTH);
+                strncpy(chat->messages[(chat->num_messages)].text, " \0", MAX_MESSAGE_LENGTH);
                 chat->current_channel = strdup(channel_name);
                 // Send a read message to the server
-                snprintf(join_msg, MAX_MESSAGE_LENGTH, "READ M %s %s", channel_name, "5");
-                write(chat->communicate_to_client, join_msg, strlen(join_msg));
+//                snprintf(join_msg, MAX_MESSAGE_LENGTH, "READ M %s %s", channel_name, "5");
+//                write(chat->communicate_to_client, join_msg, strlen(join_msg));
                 //  read the messages from the server and display them
+
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }

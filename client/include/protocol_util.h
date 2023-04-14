@@ -77,7 +77,8 @@ void send_read_message(struct dc_env *env, struct dc_error *err, int fd, const c
  */
 void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
-void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+
+__attribute__((unused)) void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
 /**

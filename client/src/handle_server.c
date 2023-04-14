@@ -136,19 +136,19 @@ void handle_create_auth_response(struct server_options *options, char *body)
 
         fprintf(options->debug_log_file, "CREATE USER AUTH SUCCESS\n");
         fprintf(options->debug_log_file, "DisplayName: %s\n", display_name);
-//        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
-//        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
+        fprintf(options->debug_log_file, "Privy Level: %s\n", privilege_level);
+        fprintf(options->debug_log_file, "CHANNEL NUMBER: %s\n", channel_name_list_size);
         clear_debug_file_buffer(options->debug_log_file);
 
         // OK GLOBAL, Channel1\0
-//        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
+        uint16_t channel_size = dc_uint16_from_str(options->env, options->err, channel_name_list_size, BASE);
         dc_strcpy(options->env, buffer, "OK ");
 
-//        for (int i = 0; i < channel_size; i++)
-//        {
-//            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
-//        }
-        dc_strcat(options->env, buffer, dc_strtok(options->env, "Test", "\3"));
+        for (int i = 0; i < channel_size; i++)
+        {
+            dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+        }
+//        dc_strcat(options->env, buffer, dc_strtok(options->env, "Test", "\3"));
 
         dc_strcat(options->env, buffer, "\0");
         fprintf(options->debug_log_file, "UI RESPONSE: %s\n", buffer);
