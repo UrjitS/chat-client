@@ -43,6 +43,7 @@ void serialize_header(struct dc_env *env, struct dc_error *err, struct binary_he
     // Create the packet
     uint32_t packet = (((((uint32_t)header->version) & 0xF) << 28)) | ((((uint32_t)header->type) & 0xF) << 24) | // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
                       ((((uint32_t)header->object) & 0xFF) << 16) | (((uint32_t)header->body_size) & 0xFFFF);  // NOLINT(hicpp-signed-bitwise,cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+
     // Convert to network byte order.
     packet = htonl(packet);
 
@@ -124,7 +125,7 @@ void send_create_auth(struct dc_env *env, struct dc_error *err, int fd, const ch
 /**
  * Send Read Stuff
  */
-void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
@@ -137,7 +138,7 @@ void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char
     serialize_header(env, err, &header, fd, body);
 }
 
-void send_read_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_read_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
@@ -166,7 +167,7 @@ void send_read_message(struct dc_env *env, struct dc_error *err, int fd, const c
 /**
  * Send Update Stuff
  */
-void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
@@ -198,20 +199,20 @@ __attribute__((unused)) void send_update_message(struct dc_env *env, struct dc_e
     // Create specific header
     struct binary_header_field header;
     header.version = DEFAULT_VERSION;
-    header.type = CREATE;
+    header.type = UPDATE;
     header.object = MESSAGE;
     header.body_size = dc_strlen(env, body);
     // Send the header
     serialize_header(env, err, &header, fd, body);
 }
 
-void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
     struct binary_header_field header;
     header.version = DEFAULT_VERSION;
-    header.type = CREATE;
+    header.type = UPDATE;
     header.object = AUTH;
     header.body_size = dc_strlen(env, body);
     // Send the header
@@ -221,7 +222,7 @@ void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const ch
 /**
  * Send Delete Stuff
  */
-void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
@@ -234,7 +235,7 @@ void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const ch
     serialize_header(env, err, &header, fd, body);
 }
 
-void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header
@@ -247,7 +248,7 @@ void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const
     serialize_header(env, err, &header, fd, body);
 }
 
-void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
+__attribute__((unused)) void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const char * body) {
     DC_TRACE(env);
 
     // Create specific header

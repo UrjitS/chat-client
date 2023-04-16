@@ -17,7 +17,7 @@ void handle_ui_request(struct server_options * options, struct request * request
         handle_read(options, request);
     } else if (dc_strcmp(options->env, "UPDATE", request->type) == 0) {
         handle_update(options, request);
-    } else if (dc_strcmp(options->env, "DELETE", request->type) == 0) {
+    } else if (dc_strcmp(options->env, "DESTROY", request->type) == 0) {
         handle_delete(options, request);
     }
 }
@@ -91,7 +91,7 @@ void handle_create(struct server_options * options, struct request * request) {
         dc_strtok(options->env, NULL, " ");
         char * display_name = dc_strtok(options->env, NULL, " ");
         char * channel_name = dc_strtok(options->env, NULL, " ");
-        char * message_content = dc_strtok(options->env, NULL, " ");
+        char * message_content = dc_strtok(options->env, NULL, "\n");
 
         dc_strcpy(options->env, body, display_name);
         dc_strcat(options->env, body, "\3");
@@ -102,8 +102,9 @@ void handle_create(struct server_options * options, struct request * request) {
         dc_strcat(options->env, body, time_stamp);
 
         fprintf(options->debug_log_file, "Body %s\n", body); // Write a string to the file
+        fprintf(options->debug_log_file, "Body Size %zu\n", dc_strlen(options->env, body));
         clear_debug_file_buffer(options->debug_log_file);
-        send_create_message(options->env, options->err, options->socket_fd,body);
+        send_create_message(options->env, options->err, options->socket_fd, body);
     } else if (dc_strcmp(options->env, "A", request->obj) == 0)
     {
         dc_strtok(options->env, request->data, " ");

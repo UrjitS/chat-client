@@ -68,25 +68,29 @@ void send_create_auth(struct dc_env *env, struct dc_error *err, int fd, const ch
 /**
  * Send Read Stuff
  */
-void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
-void send_read_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+__attribute__((unused)) void send_read_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+
+__attribute__((unused)) void send_read_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_read_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
 /**
  * Send Update Stuff
  */
-void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+__attribute__((unused)) void send_update_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_update_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
 __attribute__((unused)) void send_update_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
-void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+
+__attribute__((unused)) void send_update_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
 /**
  * Send Delete Stuff
  */
-void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
-void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
-void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+__attribute__((unused)) void send_delete_user(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+
+__attribute__((unused)) void send_delete_channel(struct dc_env *env, struct dc_error *err, int fd, const char * body);
+
+__attribute__((unused)) void send_delete_message(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 void send_delete_auth(struct dc_env *env, struct dc_error *err, int fd, const char * body);
 
 #endif //CHAT_SERVER_PROTOCOL_UTIL_H

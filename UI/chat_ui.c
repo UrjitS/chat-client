@@ -441,7 +441,10 @@ void show_login_menu(ChatState *chat) {
     char * resp_code = strtok(response, " ");
 
     if (strcmp(resp_code, "OK") == 0) {
-        chat->available_channel = strdup(strtok(NULL, "\0"));
+        char * channel = strtok(NULL, " ");
+        if (channel != NULL) {
+            chat->available_channel = strdup(channel);
+        }
         run(chat, user);
     } else {
         // prints the servers response on the GUI
@@ -627,6 +630,7 @@ void handle_create_channel(ChatState *chat, const User *user, char *slash) {
                 strcat(channel_list, ", ");
                 strcat(channel_list, channel_name);
                 chat->available_channel = strdup(channel_list);
+                chat->current_channel = strdup(channel_name);
             } else {
                 strncpy(chat->messages[(chat->num_messages)].text, response, MAX_MESSAGE_LENGTH);
             }
@@ -641,7 +645,7 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash) {
     // send display name, channel name, and message content to server
 
     if (strchr(slash, '/') == NULL && strcmp(chat->current_channel, "N/A") != 0) {
-        snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE M %s %s %s", user->username,
+        snprintf(join_msg, MAX_MESSAGE_LENGTH, "CREATE M %s %s %s\n", user->username,
                  chat->current_channel, slash);
         write(chat->communicate_to_client, join_msg, strlen(join_msg));
 
@@ -670,7 +674,7 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash) {
     char *channel_name = strtok(NULL, " ");
 
     // check if the command is "/join <name>" to create a channel
-    if (strcmp(command, "/join") == 0) {
+    if (strcmp(command, "/join") == 0 && strcmp(chat->current_channel, channel_name) != 0) {
         // parse the publicity parameter
         if (channel_name != NULL) {
             // send the join channel message to the server

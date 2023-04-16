@@ -136,7 +136,6 @@ void * handle_ui(void * arg)
         free(request_obj);
     }
 }
-
 void * handle_server(void * arg)
 {
     struct server_options * options = (struct server_options *) arg;
@@ -145,7 +144,6 @@ void * handle_server(void * arg)
 
     while (true) {
         uint32_t header;
-        char body[MAX_SIZE];
         ssize_t n;
 
         // receive header from server
@@ -164,7 +162,7 @@ void * handle_server(void * arg)
         struct binary_header_field * binaryHeaderField = deserialize_header(options->env, options->err, options->socket_fd, header);
 
         // print deserialized header
-        fprintf(options->debug_log_file, "HEADER CONTENTS.\n"); // Write a string to the file
+        fprintf(options->debug_log_file, "\nHEADER CONTENTS.\n"); // Write a string to the file
         fprintf(options->debug_log_file, "Version: %d\n", binaryHeaderField->version);
         fprintf(options->debug_log_file, "Type: %d\n", binaryHeaderField->type);
         fprintf(options->debug_log_file, "Object: %d\n", binaryHeaderField->object);
@@ -172,8 +170,9 @@ void * handle_server(void * arg)
         clear_debug_file_buffer(options->debug_log_file);
 
         // Read body and clear buffer
-        read(options->socket_fd, &body, MAX_SIZE);
-        body[(binaryHeaderField->body_size)] = '\0';
+        char body[binaryHeaderField->body_size + 1]; // +1 for null terminator
+        dc_read_fully(options->env, options->err, options->socket_fd, &body, binaryHeaderField->body_size);
+        body[binaryHeaderField->body_size] = '\0';
         fprintf(options->debug_log_file, "Body: %s\n", body);
 
         // Handle server response
