@@ -173,7 +173,7 @@ void handle_update(struct server_options * options, struct request * request) {
         char * status = dc_strtok(options->env, NULL, " ");
 
         char * display_name = dc_strtok(options->env, NULL, " ");
-        char * channel_name = dc_strtok(options->env, NULL, " ");
+        char * channel_name = dc_strtok(options->env, NULL, "\0");
         // stupid
         dc_strcpy(options->env, body, channel_name);
         dc_strcat(options->env, body, "\3");

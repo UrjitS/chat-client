@@ -441,10 +441,14 @@ void show_login_menu(ChatState *chat) {
     char * resp_code = strtok(response, " ");
 
     if (strcmp(resp_code, "OK") == 0) {
-        char * channel = strtok(NULL, " ");
-        if (channel != NULL) {
-            chat->available_channel = strdup(channel);
+        char channels[1024] = "";
+        char * channel;
+        while ((channel = strtok(NULL, "\2")) != NULL) {
+            strcat(channels, channel);
+            strcat(channels, ", ");
         }
+        chat->available_channel = strdup(channels);
+
         run(chat, user);
     } else {
         // prints the servers response on the GUI
@@ -484,7 +488,8 @@ void * thread_message(void *arg){
         char * user_message = strtok(NULL, "\3");
         char * time_stamp = strtok(NULL, "\3");
 
-        if (user_name != NULL && user_message != NULL) {
+        if (user_name != NULL && user_message != NULL && strcmp(chatState->current_channel, "N/A") != 0) {
+
             // add message to chat history
             strncpy(chatState->messages[chatState->num_messages].text, user_message, MAX_MESSAGE_LENGTH);
             strncpy(chatState->messages[chatState->num_messages].username, user_name, MAX_USERNAME_LENGTH);
@@ -540,16 +545,9 @@ void resize_handler(ChatState *chat) {
  * @param chat ChatState struct
  * */
 void get_user_input(ChatState *chat, User *user) {
-    // TODO don't display the users regular message since server will echo it back
     // get user input
     int ch = getch();
     if (ch == KEY_ENTER || ch == '\n') {
-        // add user input to chat history with sender set to 0
-//        time_t t = time(NULL);
-//        struct tm *tm = localtime(&t);
-//        strftime(chat->messages[chat->num_messages].timestamp,
-//                 sizeof(chat->messages[chat->num_messages].timestamp), "%Y-%m-%d %H:%M:%S", tm);
-//        strncpy(chat->messages[chat->num_messages].text, chat->input_buffer, MAX_MESSAGE_LENGTH);
 
         if (strlen(chat->input_buffer) > 0) {
             handle_logout(chat, user, strdup(chat->input_buffer));
@@ -559,18 +557,7 @@ void get_user_input(ChatState *chat, User *user) {
             handle_send_messages(chat, user, strdup(chat->input_buffer));
         }
 
-//        chat->messages[chat->num_messages].sender = 0;
-//        strcpy(chat->messages[chat->num_messages].username, user->username);
-//        chat->num_messages++;
-//        if (chat->num_messages > MAX_MESSAGES) {
-//            // if chat history is full, remove the oldest message
-//            for (int i = 0; i < MAX_MESSAGES - 1; ++i) {
-//                chat->messages[i].text[0] = chat->messages[i + 1].text[0];
-//                chat->messages[i].sender = chat->messages[i + 1].sender;
-//                strcpy(chat->messages[i].timestamp, chat->messages[i + 1].timestamp);
-//            }
-//            chat->num_messages = MAX_MESSAGES;
-//        }
+
         // clear input buffer and reset input length
         memset(chat->input_buffer, 0, MAX_MESSAGE_LENGTH);
         chat->input_length = 0;
@@ -670,15 +657,15 @@ void handle_send_messages(ChatState *chat, const User *user, char *slash) {
  * */
 void handle_join_channel(ChatState *chat, const User *user, char *slash) {
     char join_msg[MAX_MESSAGE_LENGTH];
-    char *command = strtok(slash, " ");
-    char *channel_name = strtok(NULL, " ");
+    char * token, *rset;
+    token = strtok_r(slash, " ", &rset);
 
     // check if the command is "/join <name>" to create a channel
-    if (strcmp(command, "/join") == 0 && strcmp(chat->current_channel, channel_name) != 0) {
+    if (strcmp(token, "/join") == 0 && strcmp(chat->current_channel, rset) != 0) {
         // parse the publicity parameter
-        if (channel_name != NULL) {
+        if (rset != NULL) {
             // send the join channel message to the server
-            snprintf(join_msg, MAX_MESSAGE_LENGTH, "UPDATE C J %s %s", user->username, channel_name);
+            snprintf(join_msg, MAX_MESSAGE_LENGTH, "UPDATE C J %s %s\0", user->username, rset);
             write(chat->communicate_to_client, join_msg, strlen(join_msg));
 
             char response[RESPONSE_BUFFER];
@@ -690,7 +677,7 @@ void handle_join_channel(ChatState *chat, const User *user, char *slash) {
             if (strcmp(resp_code, "OK") == 0) {
                 // prints the servers response on the GUI
                 strncpy(chat->messages[(chat->num_messages)].text, " \0", MAX_MESSAGE_LENGTH);
-                chat->current_channel = strdup(channel_name);
+                chat->current_channel = strdup(rset);
                 // Send a read message to the server
 //                snprintf(join_msg, MAX_MESSAGE_LENGTH, "READ M %s %s", channel_name, "5");
 //                write(chat->communicate_to_client, join_msg, strlen(join_msg));

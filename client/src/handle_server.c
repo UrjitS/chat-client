@@ -148,6 +148,7 @@ void handle_create_auth_response(struct server_options *options, char *body)
         for (int i = 0; i < channel_size; i++)
         {
             dc_strcat(options->env, buffer, dc_strtok(options->env, NULL, "\3"));
+            dc_strcat(options->env, buffer, "\2");
         }
 
         dc_strcat(options->env, buffer, "\0");
