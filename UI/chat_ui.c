@@ -517,7 +517,7 @@ void * thread_message(void *arg){
 
             message->sender = 1;
 
-            print_messages(chatState, user);
+//            print_messages(chatState, user);
             refresh();
         }
     }

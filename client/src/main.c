@@ -123,17 +123,22 @@ void * handle_ui(void * arg)
         }
         request[num_read] = '\0';
         // Write the string to the file
-        fprintf(options->debug_log_file, "%s\n", request); // Write a string to the file
+        fprintf(options->debug_log_file, "\n%s\n", request); // Write a string to the file
+        clear_debug_file_buffer(options->debug_log_file);
 
-        struct request *  request_obj = get_type_and_object(options, dc_strdup(options->env, options->err, request));
-        handle_ui_request(options, request_obj);
+        char * dup_request = dc_strdup(options->env, options->err, request);
+        if (dup_request != NULL) {
+            struct request *  request_obj = get_type_and_object(options, dc_strdup(options->env, options->err, request));
+            handle_ui_request(options, request_obj);
+            free(request_obj->type);
+            free(request_obj->obj);
+            free(request_obj->data);
+            free(request_obj);
+        }
 
         // Clear buffer
         clear_debug_file_buffer(options->debug_log_file);
-        free(request_obj->type);
-        free(request_obj->obj);
-        free(request_obj->data);
-        free(request_obj);
+
     }
 }
 void * handle_server(void * arg)
